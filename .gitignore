@@ -1,0 +1,14 @@
+# -*- mode: conf; -*-
+
+# Temporary files
+*~
+
+# Generated files/autoconf/automake files
+Makefile
+configure
+config.*
+*.in
+aclocal*
+autom*
+install-sh
+missing
