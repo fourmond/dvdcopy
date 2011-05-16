@@ -80,7 +80,7 @@ DVDOutFile::DVDOutFile(const char * output_dir, int t,
                        dvd_read_domain_t d) :
   outputDirectory(output_dir), title(t), domain(d), sector(0), fd(-1)
 {
-
+  
 }
 
 void DVDOutFile::openFile()
@@ -105,9 +105,8 @@ void DVDOutFile::openFile()
 
 void DVDOutFile::writeSectors(const char * data, size_t number)
 {
-  if(fd < 0) {
-    throw std::logic_error("Trying to write to closed file !");
-  }
+  if(fd < 0)
+    openFile();
   int cur_sect_pos = sector % MAX_FILE_SIZE;
   if(cur_sect_pos + number <= MAX_FILE_SIZE) {
     /* Simple case */
