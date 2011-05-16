@@ -12,3 +12,7 @@ aclocal*
 autom*
 install-sh
 missing
+depcomp
+.deps
+*.o
+dvdcopy
