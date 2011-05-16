@@ -1,0 +1,11 @@
+#!/bin/sh
+
+# Written by Vincent Fourmond <vincent.fourmond@9online.fr>
+# A small shell script to generate all the files required for building
+# based only on the SVN export.
+
+aclocal                                     
+autoconf
+automake --add-missing                      
+automake         
+
