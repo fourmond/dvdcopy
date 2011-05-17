@@ -25,10 +25,50 @@
 #include "headers.hh"
 #include "dvdcopy.hh"
 
+#include <getopt.h>
+
+void printHelp(const char * progname)
+{
+  std::cout << "Usage: " << progname 
+            << " source target\n\n" 
+            << "Copies the DVD at the device source to the directory target\n\n"
+            << "Options: \n" 
+            << " -h, --help: print this help message\n"
+            << " -e, --eject: attempts to eject the source at the end\n";
+    
+}
+
+static struct option long_options[] = {
+  { "help", 0, NULL, 'h'},
+  { "eject", 0, NULL, 'e' },
+  { NULL, 0, NULL, 0}
+};
+
 int main(int argc, char ** argv)
 {
   DVDCopy dvd;
-  // Hmmm
-  dvd.copy(argv[1], argv[2]);
+
+  int option;
+
+  do {
+    option = getopt_long(argc, argv, "he",
+                         long_options, NULL);
+    
+    switch(option) {
+    case -1: break;
+    case 'h': 
+      printHelp(argv[0]);
+      return 0;
+    case 'e': 
+      std::cerr << "Eject not implemented yet" << std::endl;
+      break;
+    }
+  } while(option != -1);
+  if(argc != optind + 2) {
+    printHelp(argv[0]);
+    return 1;
+  }
+  
+  dvd.copy(argv[optind], argv[optind+1]);
   return 0;
 }

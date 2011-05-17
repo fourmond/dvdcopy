@@ -24,6 +24,7 @@
 
 #include <string>
 #include <stdexcept>
+#include <iostream>
 
 // DVDRead
 #include <dvdread/dvd_reader.h>
