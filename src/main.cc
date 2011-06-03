@@ -42,7 +42,7 @@ void printHelp(const char * progname)
 static struct option long_options[] = {
   { "help", 0, NULL, 'h'},
   { "eject", 0, NULL, 'e' },
-  { "list", 0, NULL, 'l' },
+  { "list", 1, NULL, 'l' },
   { NULL, 0, NULL, 0}
 };
 

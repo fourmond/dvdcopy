@@ -94,6 +94,10 @@ std::vector<DVDFileData *> DVDReader::listFiles()
     if(dat) 
       retval.push_back(dat);
 
+    dat = getFileInfo(title, DVD_READ_INFO_BACKUP_FILE, 0);
+    if(dat) 
+      retval.push_back(dat);
+
     if(title) {
       int nb = 1;
       while(1) {
