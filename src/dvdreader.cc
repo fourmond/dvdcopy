@@ -44,17 +44,17 @@ DVDReader::DVDReader(const char * device) : source(device), isDir(false)
   }
 }
 
-std::string DVDReader::FileData::fileName() const
+std::string DVDFileData::fileName() const
 {
   std::string s("/VIDEO_TS/");
   return s + DVDOutFile::fileName(title, domain, number);
 }
 
-DVDReader::FileData * DVDReader::getFileInfo(int title, 
+DVDFileData * DVDReader::getFileInfo(int title, 
                                              dvd_read_domain_t domain, 
                                              int number)
 {
-  FileData * data = new FileData(title, domain, number);
+  DVDFileData * data = new DVDFileData(title, domain, number);
   if(isDir) {
     struct stat sb;
     std::string file = source + data->fileName();
@@ -79,12 +79,12 @@ DVDReader::FileData * DVDReader::getFileInfo(int title,
   return NULL;
 }
 
-std::vector<DVDReader::FileData *> DVDReader::listFiles()
+std::vector<DVDFileData *> DVDReader::listFiles()
 {
-  std::vector<FileData *> retval;
+  std::vector<DVDFileData *> retval;
   int title = 0;
   while(1) {
-    FileData * dat;
+    DVDFileData * dat;
     dat = getFileInfo(title, DVD_READ_INFO_FILE, 0);
     if(! dat)
       break;
@@ -108,11 +108,11 @@ std::vector<DVDReader::FileData *> DVDReader::listFiles()
   }
 
   // Now browse through retval to find about duplicates
-  std::map<unsigned long, FileData *> dups;
-  for(std::vector<FileData *>::iterator i = retval.begin(); 
+  std::map<unsigned long, DVDFileData *> dups;
+  for(std::vector<DVDFileData *>::iterator i = retval.begin(); 
       i != retval.end(); i++) {
-    FileData * dat = *i;
-    std::map<unsigned long, FileData *>::iterator j = 
+    DVDFileData * dat = *i;
+    std::map<unsigned long, DVDFileData *>::iterator j = 
       dups.find(dat->fileID);
     if(j != dups.end())
       dat->dup = j->second;
@@ -127,11 +127,13 @@ std::vector<DVDReader::FileData *> DVDReader::listFiles()
 
 void DVDReader::displayFiles()
 {
-  std::vector<FileData *> files = listFiles();
-  for(std::vector<FileData *>::iterator i = files.begin();
+  std::vector<DVDFileData *> files = listFiles();
+  for(std::vector<DVDFileData *>::iterator i = files.begin();
       i != files.end(); i++) {
-    FileData * f = *i;
-    std::cout << f->fileName() << ": " << f->size 
+    DVDFileData * f = *i;
+    char buffer[30];
+    snprintf(buffer, sizeof(buffer), "%12u", f->size);
+    std::cout << f->fileName() << ": " << buffer 
               << "\t" << f->fileID << std::endl;
     if(f->dup)
       std::cout << "\t-> duplicate of " << f->dup->fileName()

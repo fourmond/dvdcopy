@@ -20,40 +20,42 @@
 #ifndef __DVDREADER_H
 #define __DVDREADER_H
 
+/// A storage space for data about files
+class DVDFileData {
+public:
+
+  /// The titleset
+  int title;
+
+  /// The domain
+  dvd_read_domain_t domain;
+
+  /// The number of the file
+  int number;
+
+  /// The file this one is a duplicate of.
+  DVDFileData * dup;
+
+  DVDFileData(int t, dvd_read_domain_t d, 
+              int n) : title(t), domain(d), number(n), dup(NULL) {;};
+
+  /// This number identifies the file (either start sector if using
+  /// an image of inode number if using a directory)
+  unsigned long fileID;
+
+  /// The size of the file
+  uint32_t size;
+
+  std::string fileName() const;
+    
+};
+
+
 /// Wraps a dvdreader_t object.
 ///
 /// For now, it only provides introspection functions.
 class DVDReader {
 
-  /// A storage space for data about files
-  class FileData {
-  public:
-
-    /// The titleset
-    int title;
-
-    /// The domain
-    dvd_read_domain_t domain;
-
-    /// The number of the file
-    int number;
-
-    /// The file this one is a duplicate of.
-    FileData * dup;
-
-    FileData(int t, dvd_read_domain_t d, 
-             int n) : title(t), domain(d), number(n), dup(NULL) {;};
-
-    /// This number identifies the file (either start sector if using
-    /// an image of inode number if using a directory)
-    unsigned long fileID;
-
-    /// The size of the file
-    uint32_t size;
-
-    std::string fileName() const;
-    
-  };
 
   /// The reader
   dvd_reader_t * reader;
@@ -68,10 +70,10 @@ class DVDReader {
   /// Get information about the given file.
   ///
   /// Returns NULL on absent file.
-  FileData * getFileInfo(int title, dvd_read_domain_t domain, int number);
+  DVDFileData * getFileInfo(int title, dvd_read_domain_t domain, int number);
 
   /// List all files present on the 
-  std::vector<FileData *> listFiles();
+  std::vector<DVDFileData *> listFiles();
   
 public:
 
