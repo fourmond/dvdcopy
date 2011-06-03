@@ -35,11 +35,10 @@
 #define SECTOR_SIZE 2048
 
 
-std::string DVDOutFile::makeFileName(int number) const
+std::string DVDOutFile::fileName(int title, dvd_read_domain_t domain,
+                                 int number = -1)
 {
   char buffer[100];             // Large enough
-  if(number < 0) 
-    number = sector / MAX_FILE_SIZE + 1;
   const char * format;
   const char * ext;
   if(title)
@@ -66,6 +65,13 @@ std::string DVDOutFile::makeFileName(int number) const
   }
   snprintf(buffer, sizeof(buffer), format, ext, title, number);
   return std::string(buffer);
+}
+
+std::string DVDOutFile::makeFileName(int number) const
+{
+  if(number < 0) 
+    number = sector / MAX_FILE_SIZE + 1;
+  return fileName(title, domain, number);
 }
 
 

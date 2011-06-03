@@ -75,6 +75,10 @@ public:
   void seek(int sector);
 
   ~DVDOutFile();
+
+  /// Returns the file name for the given attributes
+  static std::string fileName(int title, dvd_read_domain_t domain,
+                              int number);
 };
 
 

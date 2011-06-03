@@ -25,9 +25,12 @@
 #include <string>
 #include <stdexcept>
 #include <iostream>
+#include <vector>
+#include <map>
 
 // DVDRead
 #include <dvdread/dvd_reader.h>
+#include <dvdread/dvd_udf.h>
 
 // standard C libraries
 

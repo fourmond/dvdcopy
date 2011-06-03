@@ -24,6 +24,7 @@
 
 #include "headers.hh"
 #include "dvdcopy.hh"
+#include "dvdreader.hh"
 
 #include <getopt.h>
 
@@ -41,6 +42,7 @@ void printHelp(const char * progname)
 static struct option long_options[] = {
   { "help", 0, NULL, 'h'},
   { "eject", 0, NULL, 'e' },
+  { "list", 0, NULL, 'l' },
   { NULL, 0, NULL, 0}
 };
 
@@ -51,7 +53,7 @@ int main(int argc, char ** argv)
   int option;
 
   do {
-    option = getopt_long(argc, argv, "he",
+    option = getopt_long(argc, argv, "hel:",
                          long_options, NULL);
     
     switch(option) {
@@ -62,6 +64,12 @@ int main(int argc, char ** argv)
     case 'e': 
       std::cerr << "Eject not implemented yet" << std::endl;
       break;
+    case 'l': 
+      {
+        DVDReader dvd(optarg);
+        dvd.displayFiles();
+      }
+      return 0;
     }
   } while(option != -1);
   if(argc != optind + 2) {
