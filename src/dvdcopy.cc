@@ -47,10 +47,26 @@ DVDCopy::DVDCopy()
 }
 
 
-void DVDCopy::copyFile(int title, dvd_read_domain_t d)
+void DVDCopy::copyFile(const DVDFileData * dat)
 {
-  dvd_file_t * file = DVDOpenFile(reader, title, d);
-  DVDOutFile outfile(targetDirectory.c_str(), title, d);
+  // First, looking for duplicates:
+  if(dat->dup) {
+    // We do hard links
+    /// @todo handle the case when target file already exists.
+    std::string source = targetDirectory + dat->dup->fileName();
+    std::string target = targetDirectory + dat->fileName();
+    std::cout << "Hardlinking " 
+              << target << " to " << source << std::endl;
+    link(source.c_str(), target.c_str());
+    return;
+  }
+
+  // We skip copies where the number is greater than one, already dealt with
+  if(dat->number > 1)
+    return;
+
+  dvd_file_t * file = DVDOpenFile(reader, dat->title, dat->domain);
+  DVDOutFile outfile(targetDirectory.c_str(), dat->title, dat->domain);
 
   /* Data structures necessary for progress report */
   struct timeval init;
@@ -76,7 +92,8 @@ void DVDCopy::copyFile(int title, dvd_read_domain_t d)
        - seek the output file...
     */
     if(current_size > 0) {
-      if(d == DVD_READ_INFO_FILE || d == DVD_READ_INFO_BACKUP_FILE)
+      if(dat->domain == DVD_READ_INFO_FILE || 
+         dat->domain == DVD_READ_INFO_BACKUP_FILE)
 	DVDFileSeek(file, current_size * 2048);
       else
 	blk = current_size;
@@ -86,7 +103,7 @@ void DVDCopy::copyFile(int title, dvd_read_domain_t d)
       printf("File already partially read: using %d sectors\n",
 	     current_size);
     }
-    switch(d) {
+    switch(dat->domain) {
     case DVD_READ_INFO_FILE:
     case DVD_READ_INFO_BACKUP_FILE:
       size *= 2048;		/* The number of bytes to read ! */
@@ -173,6 +190,12 @@ void DVDCopy::copy(const char *device, const char * target)
   char buf[1024];
   targetDirectory = target;
 
+  std::vector<DVDFileData *> files;
+  {
+    DVDReader r(device);
+    files = r.listFiles();
+  }
+
   reader = DVDOpen(device);
   if(! reader) {
     std::string err("Error opening device ");
@@ -193,25 +216,12 @@ void DVDCopy::copy(const char *device, const char * target)
     mkdir(buf, 0755);
   }
 
-  while(file = DVDOpenFile(reader, title, DVD_READ_INFO_FILE)) {
-    DVDCloseFile(file);
-    
-    printf("\nReading title set %02d\n", title);
-    printf("Reading info file\n", title);
-    copyFile(title, DVD_READ_INFO_FILE);
-    if(! title) {
-      printf("Reading backup info file\n", title);
-      copyFile(title, DVD_READ_INFO_BACKUP_FILE);
-    }
-    printf("Reading menu file\n", title);
-    copyFile(title, DVD_READ_MENU_VOBS);
-    if(title) {
-      /* It does not make sense for the main title */
-      printf("\nReading title set files\n", title);
-      copyFile(title, DVD_READ_TITLE_VOBS);
-    }
-    title ++;
-  }
+
+  /// Methodically copies all listed files
+  for(std::vector<DVDFileData *>::iterator i = files.begin(); 
+      i != files.end(); i++)
+    copyFile(*i);
+
 }
 
 DVDCopy::~DVDCopy()
@@ -219,5 +229,4 @@ DVDCopy::~DVDCopy()
   delete readBuffer;
   if(reader)
     DVDClose(reader);
-        
 }

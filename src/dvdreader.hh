@@ -72,8 +72,6 @@ class DVDReader {
   /// Returns NULL on absent file.
   DVDFileData * getFileInfo(int title, dvd_read_domain_t domain, int number);
 
-  /// List all files present on the 
-  std::vector<DVDFileData *> listFiles();
   
 public:
 
@@ -82,7 +80,12 @@ public:
 
   /// List files present in the DVD structure
   void displayFiles();
-  
+
+  /// List all files present on the device
+  std::vector<DVDFileData *> listFiles();
+
+
+  ~DVDReader();
 };
 
 

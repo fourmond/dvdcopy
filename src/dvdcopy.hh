@@ -20,13 +20,15 @@
 #ifndef __DVDCOPY_H
 #define __DVDCOPY_H
 
+#include "dvdreader.hh"
+
 /// Handles the actual copying job, from a source to a target.
 class DVDCopy {
   /// A read buffer
   char * readBuffer;
 
   /// Copies one file.
-  void copyFile(int title, dvd_read_domain_t d);
+  void copyFile(const DVDFileData * dat);
 
   /// The DVD device we're reading
   dvd_reader_t * reader;

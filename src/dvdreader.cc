@@ -144,3 +144,8 @@ void DVDReader::displayFiles()
                 << std::endl;
   }
 }
+
+DVDReader::~DVDReader()
+{
+  DVDClose(reader);
+}
