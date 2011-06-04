@@ -1,0 +1,26 @@
+h1. dvdcopy: backup your DVDs to disk
+
+This program copies the contents of video DVDs to disk using
+libdvdread. This means it can benefit of the present of libdvdcss on
+your computer.
+
+This program was designed as a means to view DVDs from public
+libraries, as those are too scratched to be viewed directly with
+DVD-playing software such as xine, and must be copied to hard disk
+first.
+
+Typical use:
+
+<pre>
+% dvdcopy /dev/dvd Movie
+</pre>
+
+This copies the contents of the video DVD @/dev/dvd@ into the
+directory @Movie@. Most video-playing softwares can play DVDs directly
+in directories. For instance, with xine, you would use:
+
+<pre>
+% xine dvd://`pwd`/Movie
+</pre>
+
+
