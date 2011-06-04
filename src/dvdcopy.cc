@@ -49,15 +49,42 @@ DVDCopy::DVDCopy()
 
 void DVDCopy::copyFile(const DVDFileData * dat)
 {
+  /// @todo This function shouldn't mix calls to printf and std::cout
+  /// ? (hmmm, if all calls finish by std::endl, flushes should be
+  /// fine)
+
   // First, looking for duplicates:
   if(dat->dup) {
     // We do hard links
-    /// @todo handle the case when target file already exists.
+    struct stat st;
     std::string source = targetDirectory + dat->dup->fileName();
     std::string target = targetDirectory + dat->fileName();
-    std::cout << "Hardlinking " 
-              << target << " to " << source << std::endl;
-    link(source.c_str(), target.c_str());
+    if(stat(target.c_str(), &st)) {
+      std::cout << "Hardlinking " 
+                << target << " to " << source << std::endl;
+      link(source.c_str(), target.c_str());
+    }
+    else {
+      struct stat stold;
+      if(stat(source.c_str(), &stold)) {
+        std::string error = "Must link ";
+        error += target + " to " + source + ", but the latter doesnt exist !";
+        throw std::runtime_error(error);
+      }
+      // Both target file and source file exists, we check the inode
+      // numbers are the same.
+      if(stold.st_ino != st.st_ino) {
+        std::string error = "Must link ";
+        error += target + " to " + source + ", but " + target +
+          " exists and isn't a hard link to " + source + "\n" +
+          "You must remove it to proceed";
+        throw std::runtime_error(error);
+      }
+      std::cout << "Not hardlinking " 
+                << target << " to " << source 
+                << ", already done" << std::endl;
+      return;
+    }
     return;
   }
 
