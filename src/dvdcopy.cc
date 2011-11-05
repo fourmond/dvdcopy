@@ -40,7 +40,7 @@
 int debug = 1;
 
 
-DVDCopy::DVDCopy()
+DVDCopy::DVDCopy() : badSectors(NULL)
 {
   readBuffer = new char[BUF_SIZE];
   reader = NULL;
@@ -167,6 +167,7 @@ void DVDCopy::copyFile(const DVDFileData * dat)
 	  printf("\rError while reading block %d of file %s, skipping\n",
 		 blk, fileName.c_str());
 	  outfile.skipSectors(nb);
+          registerBadSectors(dat, blk, nb);
 	  read = nb;
 	  skipped += nb;
 	}
@@ -256,4 +257,23 @@ DVDCopy::~DVDCopy()
   delete readBuffer;
   if(reader)
     DVDClose(reader);
+  if(badSectors)
+    fclose(badSectors);
+}
+
+
+void DVDCopy::registerBadSectors(const DVDFileData * dat, 
+                                 int beg, int size)
+{
+  if(! badSectors) {
+    std::string bsf = targetDirectory + ".bad";
+    badSectors = fopen(bsf.c_str(), "a");
+  }
+
+  fprintf(badSectors, "%s: %d,%d,%d  %d (%d)\n",
+          dat->fileName().c_str(),
+          dat->title,
+          dat->domain,
+          dat->number,
+          beg, size);
 }

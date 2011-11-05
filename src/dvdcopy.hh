@@ -36,6 +36,14 @@ class DVDCopy {
   /// The target directory.
   std::string targetDirectory;
 
+  /// A list of bad sectors that were skipped upon reading.
+  /// In the hope to be read again...
+  FILE * badSectors;
+
+  /// Writes a bad sector list to the file
+  void registerBadSectors(const DVDFileData * dat, 
+                          int beg, int size);
+
 public:
 
   DVDCopy();
