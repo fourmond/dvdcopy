@@ -47,7 +47,8 @@ DVDCopy::DVDCopy() : badSectors(NULL)
 }
 
 
-void DVDCopy::copyFile(const DVDFileData * dat)
+void DVDCopy::copyFile(const DVDFileData * dat, int firstBlock, 
+                       int blockNumber)
 {
   /// @todo This function shouldn't mix calls to printf and std::cout
   /// ? (hmmm, if all calls finish by std::endl, flushes should be
@@ -88,7 +89,9 @@ void DVDCopy::copyFile(const DVDFileData * dat)
     return;
   }
 
-  // We skip copies where the number is greater than one, already dealt with
+  // Files where the number is greater than 1 (ie part of a track VOB)
+  // have already been copied along with the number 1, no need to do
+  // anything.
   if(dat->number > 1)
     return;
 
@@ -106,6 +109,9 @@ void DVDCopy::copyFile(const DVDFileData * dat)
   if(file) {
     int size = DVDFileSize(file);
     int current_size = outfile.fileSize();
+    if(firstBlock > 0)
+      current_size = firstBlock; // Seek to the beginning of the
+                                 // region to be read
     int read;
     int blk = 0;
     unsigned nb;		/* The number of blocks we're about to read */
@@ -114,6 +120,7 @@ void DVDCopy::copyFile(const DVDFileData * dat)
       printf("File already fully read: not reading again\n");
       return;
     }
+
     /* Now, if current_size > 0:
        - seek the input file, if necessary
        - seek the output file...
@@ -130,6 +137,8 @@ void DVDCopy::copyFile(const DVDFileData * dat)
       printf("File already partially read: using %d sectors\n",
 	     current_size);
     }
+    if(blockNumber > 0)
+      size = current_size + blockNumber; // we read only the relevant portion
     switch(dat->domain) {
     case DVD_READ_INFO_FILE:
     case DVD_READ_INFO_BACKUP_FILE:
@@ -211,18 +220,13 @@ void DVDCopy::copyFile(const DVDFileData * dat)
   }
 }
 
-void DVDCopy::copy(const char *device, const char * target)
+void DVDCopy::setup(const char *device, const char * target)
 {
-  dvd_file_t * file;
-  int title = 0;
   char buf[1024];
   targetDirectory = target;
 
-  std::vector<DVDFileData *> files;
-  {
-    DVDReader r(device);
-    files = r.listFiles();
-  }
+  DVDReader r(device);
+  files = r.listFiles();
 
   reader = DVDOpen(device);
   if(! reader) {
@@ -245,11 +249,21 @@ void DVDCopy::copy(const char *device, const char * target)
   }
 
 
+}
+
+void DVDCopy::copy(const char *device, const char * target)
+{
+  setup(device, target);
+
   /// Methodically copies all listed files
   for(std::vector<DVDFileData *>::iterator i = files.begin(); 
       i != files.end(); i++)
     copyFile(*i);
+}
 
+void DVDCopy::secondPass(const char *device, const char * target)
+{
+  
 }
 
 DVDCopy::~DVDCopy()
@@ -259,6 +273,9 @@ DVDCopy::~DVDCopy()
     DVDClose(reader);
   if(badSectors)
     fclose(badSectors);
+  for(std::vector<DVDFileData *>::iterator i = files.begin(); 
+      i != files.end(); i++)
+    delete *i;                  // Keep it clean;
 }
 
 

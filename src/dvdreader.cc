@@ -51,8 +51,8 @@ std::string DVDFileData::fileName() const
 }
 
 DVDFileData * DVDReader::getFileInfo(int title, 
-                                             dvd_read_domain_t domain, 
-                                             int number)
+                                     dvd_read_domain_t domain, 
+                                     int number)
 {
   DVDFileData * data = new DVDFileData(title, domain, number);
   if(isDir) {

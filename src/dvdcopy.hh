@@ -28,7 +28,10 @@ class DVDCopy {
   char * readBuffer;
 
   /// Copies one file.
-  void copyFile(const DVDFileData * dat);
+  ///
+  /// If specified, the @a start and @a nb parameters define the
+  /// starting sector (or byte ?) and 
+  void copyFile(const DVDFileData * dat, int start = 0, int nb = -1);
 
   /// The DVD device we're reading
   dvd_reader_t * reader;
@@ -44,6 +47,18 @@ class DVDCopy {
   void registerBadSectors(const DVDFileData * dat, 
                           int beg, int size);
 
+
+  /// sets up the reader and gets the list of files, and sets up the
+  /// target, creating the target directories if necessary.
+  void setup(const char * source, const char * target);
+
+  /// The underlying files of the source
+  std::vector<DVDFileData *> files;
+
+  class BadSectors {
+    
+  };
+
 public:
 
   DVDCopy();
@@ -51,6 +66,9 @@ public:
   /// Copies from source device to destination directory. The target
   /// directory should probably not exist.
   void copy(const char * source, const char * dest);
+
+  /// Does a second pass, reading a bad sector files
+  void secondPass(const char * source, const char * dest);
 
   ~DVDCopy();
 };

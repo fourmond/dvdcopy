@@ -188,6 +188,7 @@ size_t DVDOutFile::fileSize() const
       cur += 1;
     }
   }
+  return 0;
 }
 
 void DVDOutFile::seek(int s)
