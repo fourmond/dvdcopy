@@ -43,7 +43,8 @@ class DVDCopy {
   /// In the hope to be read again...
   FILE * badSectors;
 
-  /// Writes a bad sector list to the file
+  /// Writes a bad sector list to the file, and add them to the
+  /// badSectors list.
   void registerBadSectors(const DVDFileData * dat, 
                           int beg, int size);
 
@@ -55,9 +56,39 @@ class DVDCopy {
   /// The underlying files of the source
   std::vector<DVDFileData *> files;
 
+  /// Subclass representing a single line in a bad sectors file.
   class BadSectors {
+  public:
+
+    /// The underlying DVD file (ie something in the files list)
+    const DVDFileData * file;
     
+    /// The starting sector
+    int start;
+
+    /// The number of bad sectors;
+    int number;
+
+    BadSectors(const DVDFileData * f, int s, int n) :
+      file(f), start(s), number(n) {;}
   };
+
+  /// The list of bad sectors, either read from the bad sectors file
+  /// or directly populated registerBadSectors
+  std::vector<BadSectors> badSectorsList;
+
+  /// reads the bad sectors from the bad sectors file
+  void readBadSectors();
+
+  /// Opens the bad sectors file with the given mode, if not open already.
+  ///
+  /// @todo There should be a way to track the mode last used in order
+  /// not to try to read from a descriptor open for writing.
+  void openBadSectorsFile(const char * mode);
+
+  /// Finds the index of the file referred to by the title, domain,
+  /// number triplet. Returns -1 if not found.
+  int findFile(int title, dvd_read_domain_t domain, int number);
 
 public:
 

@@ -32,6 +32,9 @@
 
 #include <sys/time.h>
 
+// use of regular expressions !
+#include <regex.h>
+
 
 
 #define BUF_BLOCK_SIZE 128
@@ -134,11 +137,15 @@ void DVDCopy::copyFile(const DVDFileData * dat, int firstBlock,
 
       outfile.seek(current_size);
       size -= current_size;
-      printf("File already partially read: using %d sectors\n",
-	     current_size);
+      const char * fmt = 
+        (firstBlock > 0 ? 
+         "Partial read starting at sector %d\n": 
+         "File already partially read: using %d sectors\n");
+      
+      printf(fmt, current_size);
     }
     if(blockNumber > 0)
-      size = current_size + blockNumber; // we read only the relevant portion
+      size = blockNumber; // we read only the relevant portion
     switch(dat->domain) {
     case DVD_READ_INFO_FILE:
     case DVD_READ_INFO_BACKUP_FILE:
@@ -263,7 +270,17 @@ void DVDCopy::copy(const char *device, const char * target)
 
 void DVDCopy::secondPass(const char *device, const char * target)
 {
-  
+  setup(device, target);
+  readBadSectors();
+
+  for(int i = 0; i < badSectorsList.size(); i++) {
+    BadSectors & bs = badSectorsList[i];
+    printf("Trying to read %d bad sectors from file %s at %d:\n",
+           bs.number,
+           bs.file->fileName().c_str(),
+           bs.start);
+    copyFile(bs.file, bs.start, bs.number);
+  }
 }
 
 DVDCopy::~DVDCopy()
@@ -278,15 +295,18 @@ DVDCopy::~DVDCopy()
     delete *i;                  // Keep it clean;
 }
 
+void DVDCopy::openBadSectorsFile(const char * mode)
+{
+  if(! badSectors) {
+    std::string bsf = targetDirectory + ".bad";
+    badSectors = fopen(bsf.c_str(), mode);
+  }
+}
 
 void DVDCopy::registerBadSectors(const DVDFileData * dat, 
                                  int beg, int size)
 {
-  if(! badSectors) {
-    std::string bsf = targetDirectory + ".bad";
-    badSectors = fopen(bsf.c_str(), "a");
-  }
-
+  openBadSectorsFile("a");
   fprintf(badSectors, "%s: %d,%d,%d  %d (%d)\n",
           dat->fileName().c_str(),
           dat->title,
@@ -294,4 +314,78 @@ void DVDCopy::registerBadSectors(const DVDFileData * dat,
           dat->number,
           beg, size);
   fflush(badSectors);
+
+  badSectorsList.push_back(BadSectors(dat, beg, size));
+}
+
+int DVDCopy::findFile(int title, dvd_read_domain_t domain, int number)
+{
+  for(int i = 0; i < files.size(); i++) {
+    const DVDFileData * dat = files[i];
+    if( 
+       (dat->title == title) && 
+       (dat->domain == domain) && 
+       (dat->number == number)
+        )
+      return i;
+  }
+  return -1;
+}
+
+void DVDCopy::readBadSectors()
+{
+  openBadSectorsFile("r");
+  if(! badSectors) {
+    fprintf(stderr, "%s", "No bad sectors file found, "
+            "which is probably good news !\n");
+    return;
+  }
+
+  char buffer[1024];
+  regex_t re;
+  regmatch_t matches[6];
+  { 
+    int er = regcomp(&re, "[^:]+: *([0-9]+),([0-9]+),([0-9]+) *"
+                     "([0-9]+) *\\(([0-9]+)\\)",
+                     REG_EXTENDED);
+    if(er) {
+      regerror(er, &re, buffer, sizeof(buffer));
+      fprintf(stderr, "Error building the line regexp: %s", buffer);
+      return;
+    }
+  }
+    
+  while(! feof(badSectors)) {
+    fgets(buffer, sizeof(buffer), badSectors);
+    int status = regexec(&re, buffer, sizeof(matches)/sizeof(regmatch_t),
+                         matches, 0);
+    if(status) {
+      fprintf(stderr, "error parsing line: %s", buffer);
+    }
+    else {
+      // Make all substrings NULL-terminated:
+      for(int i = 1; i < sizeof(matches)/sizeof(regmatch_t); i++) {
+        if(matches[i].rm_so >= 0)
+          buffer[matches[i].rm_eo] = 0;
+      }
+      
+      // No validation whatsoever, but all groups should be here anyway !
+      int title = atoi(buffer + matches[1].rm_so);
+      dvd_read_domain_t domain = 
+        (dvd_read_domain_t) atoi(buffer + matches[2].rm_so);
+      int number = atoi(buffer + matches[3].rm_so);
+
+      int beg = atoi(buffer + matches[4].rm_so);
+      int size = atoi(buffer + matches[5].rm_so);
+
+      int idx = findFile(title, domain, number);
+      if(idx < 0) {
+        fprintf(stderr, "Found no match for file %d,%d,%d\n",
+                title, domain, number);
+      }
+      else
+        badSectorsList.push_back(BadSectors(files[idx], beg, size));
+    }
+  }
+  
 }
