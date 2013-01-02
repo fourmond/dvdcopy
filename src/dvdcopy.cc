@@ -276,4 +276,5 @@ void DVDCopy::registerBadSectors(const DVDFileData * dat,
           dat->domain,
           dat->number,
           beg, size);
+  fflush(badSectors);
 }
