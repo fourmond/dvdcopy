@@ -30,8 +30,15 @@ class DVDCopy {
   /// Copies one file.
   ///
   /// If specified, the @a start and @a nb parameters define the
-  /// starting sector (or byte ?) and 
-  void copyFile(const DVDFileData * dat, int start = 0, int nb = -1);
+  /// starting sector and number of sectors to be read.
+  ///
+  /// @a readNumber sets the number of sectors to read in one
+  /// go. Probably, for difficult cases, reading one-by-one may
+  /// improve the usefulness ?
+  ///
+  /// it returns the number of skipped sectors.
+  int copyFile(const DVDFileData * dat, int start = 0, 
+               int nb = -1, int readNumber = -1);
 
   /// The DVD device we're reading
   dvd_reader_t * reader;
@@ -57,6 +64,8 @@ class DVDCopy {
   std::vector<DVDFileData *> files;
 
   /// Subclass representing a single line in a bad sectors file.
+  ///
+  /// @todo Write to- and from- string methods.
   class BadSectors {
   public:
 

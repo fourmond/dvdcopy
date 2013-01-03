@@ -50,12 +50,15 @@ DVDCopy::DVDCopy() : badSectors(NULL)
 }
 
 
-void DVDCopy::copyFile(const DVDFileData * dat, int firstBlock, 
-                       int blockNumber)
+int DVDCopy::copyFile(const DVDFileData * dat, int firstBlock, 
+                      int blockNumber, int readNumber)
 {
   /// @todo This function shouldn't mix calls to printf and std::cout
   /// ? (hmmm, if all calls finish by std::endl, flushes should be
   /// fine)
+
+  if(readNumber < 0)
+    readNumber = BUF_BLOCK_SIZE;
 
   // First, looking for duplicates:
   if(dat->dup) {
@@ -87,16 +90,16 @@ void DVDCopy::copyFile(const DVDFileData * dat, int firstBlock,
       std::cout << "Not hardlinking " 
                 << target << " to " << source 
                 << ", already done" << std::endl;
-      return;
+      return 0;
     }
-    return;
+    return 0;
   }
 
   // Files where the number is greater than 1 (ie part of a track VOB)
   // have already been copied along with the number 1, no need to do
   // anything.
   if(dat->number > 1)
-    return;
+    return 0;
 
   dvd_file_t * file = DVDOpenFile(reader, dat->title, dat->domain);
   DVDOutFile outfile(targetDirectory.c_str(), dat->title, dat->domain);
@@ -121,7 +124,7 @@ void DVDCopy::copyFile(const DVDFileData * dat, int firstBlock,
     int skipped = 0;
     if(current_size == size) {
       printf("File already fully read: not reading again\n");
-      return;
+      return 0;
     }
 
     /* Now, if current_size > 0:
@@ -166,10 +169,11 @@ void DVDCopy::copyFile(const DVDFileData * dat, int firstBlock,
     case DVD_READ_TITLE_VOBS:
       /* TODO: error handling */
       gettimeofday(&init, NULL);
+      printf("Reading %d sectors at a time\n", readNumber); 
       while(size > 0) {
 	/* First, we determine the number of blocks to be read */
-	if(size > BUF_BLOCK_SIZE)
-	  nb = BUF_BLOCK_SIZE;
+	if(size > readNumber)
+	  nb = readNumber;
 	else
 	  nb = size;
 	  
@@ -220,10 +224,12 @@ void DVDCopy::copyFile(const DVDFileData * dat, int firstBlock,
 	       skipped);
       }
     }
+    return skipped;
   }
   else {
     std::string fileName = outfile.currentOutputName();
     printf("\nSkipping file %s (not found)\n", fileName.c_str());
+    return 0;
   }
 }
 
@@ -272,6 +278,7 @@ void DVDCopy::secondPass(const char *device, const char * target)
 {
   setup(device, target);
   readBadSectors();
+  int totalMissing = 0;
 
   for(int i = 0; i < badSectorsList.size(); i++) {
     BadSectors & bs = badSectorsList[i];
@@ -279,8 +286,17 @@ void DVDCopy::secondPass(const char *device, const char * target)
            bs.number,
            bs.file->fileName().c_str(),
            bs.start);
-    copyFile(bs.file, bs.start, bs.number);
+    int nb = copyFile(bs.file, bs.start, bs.number, 1);
+    if(nb > 0)
+      printf("\n -> still got %d bad sectors (out of %d)\n",
+             nb, bs.number);
+    else
+      printf("\n -> apparently successfully read missing sectors\n");
+    totalMissing += nb;
   }
+  printf("\nAltogether, there are still %d missing sectors\n", 
+         totalMissing);
+  
 }
 
 DVDCopy::~DVDCopy()
