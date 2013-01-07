@@ -44,6 +44,7 @@ static struct option long_options[] = {
   { "eject", 0, NULL, 'e' },
   { "list", 1, NULL, 'l' },
   { "second-pass", 0, NULL, 's' },
+  { "scan", 0, NULL, 'S' },
   { NULL, 0, NULL, 0}
 };
 
@@ -53,9 +54,10 @@ int main(int argc, char ** argv)
 
   int option;
   int secondPass = 0;
+  int scan = 0;
 
   do {
-    option = getopt_long(argc, argv, "hel:s",
+    option = getopt_long(argc, argv, "hel:sS",
                          long_options, NULL);
     
     switch(option) {
@@ -75,6 +77,9 @@ int main(int argc, char ** argv)
     case 's':
       secondPass = 1;
       break;
+    case 'S':
+      scan = 1;
+      break;
     }
   } while(option != -1);
   if(argc != optind + 2) {
@@ -84,6 +89,8 @@ int main(int argc, char ** argv)
   
   if(secondPass)
     dvd.secondPass(argv[optind], argv[optind+1]);
+  else if(scan)
+    dvd.scanForBadSectors(argv[optind], argv[optind+1]);
   else
     dvd.copy(argv[optind], argv[optind+1]);
   return 0;

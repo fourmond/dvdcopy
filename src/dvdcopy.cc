@@ -1,7 +1,7 @@
 /**
     \file dvdcopy.cc
     Implementation of the DVDCopy class
-    Copyright 2006, 2008, 2011 by Vincent Fourmond
+    Copyright 2006, 2008, 2011, 2012, 2013 by Vincent Fourmond
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -46,7 +46,6 @@ int debug = 1;
 
 DVDCopy::DVDCopy() : badSectors(NULL)
 {
-  readBuffer = new char[BUF_SIZE];
   reader = NULL;
 }
 
@@ -161,9 +160,6 @@ int DVDCopy::copyFile(const DVDFileData * dat, int firstBlock,
 
 void DVDCopy::setup(const char *device, const char * target)
 {
-  char buf[1024];
-  targetDirectory = target;
-
   DVDReader r(device);
   files = r.listFiles();
 
@@ -174,19 +170,22 @@ void DVDCopy::setup(const char *device, const char * target)
     throw std::runtime_error(err);
   }
 
-  struct stat dummy;
-  if(stat(target,&dummy)) {
-    fprintf(stderr,"Creating directory %s\n", target);
-    mkdir(target, 0755);
-  }
+  if(target) {
+    char buf[1024];
+    targetDirectory = target;
+    struct stat dummy;
+    if(stat(target,&dummy)) {
+      fprintf(stderr,"Creating directory %s\n", target);
+      mkdir(target, 0755);
+    }
 
-  /* Then, create the VIDEO_TS subdir if necessary */
-  snprintf(buf, sizeof(buf), "%s/VIDEO_TS", target);
-  if(stat(buf, &dummy))  {
-    fprintf(stderr,"Creating directory %s\n", buf);
-    mkdir(buf, 0755);
+    /* Then, create the VIDEO_TS subdir if necessary */
+    snprintf(buf, sizeof(buf), "%s/VIDEO_TS", target);
+    if(stat(buf, &dummy))  {
+      fprintf(stderr,"Creating directory %s\n", buf);
+      mkdir(buf, 0755);
+    }
   }
-
 
 }
 
@@ -225,9 +224,55 @@ void DVDCopy::secondPass(const char *device, const char * target)
   
 }
 
+void DVDCopy::scanForBadSectors(const char *device, 
+                                const char * badSectorsFile)
+{
+  setup(device, NULL);
+
+  badSectors = fopen(badSectorsFile, "w");
+
+  for(std::vector<DVDFileData *>::iterator i = files.begin(); 
+      i != files.end(); i++) {
+    DVDFileData * dat = *i;
+    if(dat->dup || dat->number > 1)
+      continue;
+    if(dat->domain == DVD_READ_INFO_FILE ||
+       dat->domain == DVD_READ_INFO_BACKUP_FILE)
+      continue;
+    std::unique_ptr<DVDFile> file(DVDFile::openFile(reader, dat));
+    int sz = file->fileSize();
+
+    auto success = [](int blk, int nb, 
+                      unsigned char * buf,
+                      const DVDFileData * dat,
+                      void * en) {
+      DVDCopy * dd = reinterpret_cast<DVDCopy *>(en);
+      for(int i = 0; i < nb; i++) {
+        unsigned char * buffer = buf + i * 2048;
+        int first_pes_offset = 13 + (buffer[13] & 0x7);
+        if(buffer[2] == 1 && buffer[first_pes_offset + 3] == 1)
+          continue;
+        else
+          dd->registerBadSectors(dat, blk + i, 1);
+      }
+    };
+
+    auto failure = [](int blk, int nb, 
+                      const DVDFileData * dat,
+                      void * en) {
+      DVDCopy * dd = reinterpret_cast<DVDCopy *>(en);
+      dd->registerBadSectors(dat, blk, nb);
+    };
+
+    file->walkFile(0, sz, 128, 
+                   success, failure, this);
+    /// @todo Compact the bad sectors file (this should be done at the
+    /// very end, rewriting the whole file)
+  }
+}
+
 DVDCopy::~DVDCopy()
 {
-  delete readBuffer;
   if(reader)
     DVDClose(reader);
   if(badSectors)

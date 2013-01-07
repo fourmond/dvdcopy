@@ -24,9 +24,6 @@
 
 /// Handles the actual copying job, from a source to a target.
 class DVDCopy {
-  /// A read buffer
-  char * readBuffer;
-
   /// Copies one file.
   ///
   /// If specified, the @a start and @a nb parameters define the
@@ -109,6 +106,10 @@ public:
 
   /// Does a second pass, reading a bad sector files
   void secondPass(const char * source, const char * dest);
+
+  /// Scans the source for bad sectors and make a bad sector list
+  void scanForBadSectors(const char * source, 
+                         const char * badSectorsFileName);
 
   ~DVDCopy();
 };
