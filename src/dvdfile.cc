@@ -18,7 +18,8 @@
 */
 
 #include "headers.hh"
-#include "dvdoutfile.hh"
+#include "dvdfile.hh"
+#include "dvdreader.hh"
 
 /* For stat(2), open(2) and comrades... */
 #include <sys/types.h>
@@ -32,12 +33,26 @@
 
 #define SECTOR_SIZE 2048
 
+
+
 /// Files that work byte-by-byte
 class DVDByteFile : public DVDFile {
   int blockOffset;
 public:
-  virtual int readBlocks(int blocks, int offset, unsigned char * dest) {
-    
+  virtual int readBlocks(int offset, int blocks, unsigned char * dest) {
+    if(offset != blockOffset) {
+      /// @todo error handling here.
+      DVDFileSeek(file, offset * SECTOR_SIZE);
+    }
+
+    /// @todo By construction, this function doesn't work with
+    /// sub-sector granularity.
+    int nbread = DVDReadBytes(file, dest, blocks * SECTOR_SIZE);
+    if(nbread < 0)
+      return -1;
+    nbread /= SECTOR_SIZE;
+    blockOffset = offset + nbread;
+    return nbread;              // Great !
   }
 
   DVDByteFile(dvd_file_t * f) : 
@@ -47,3 +62,58 @@ public:
   }
 
 };
+
+/// Files that work sectors by sectors
+class DVDBlockFile : public DVDFile {
+public:
+  virtual int readBlocks(int offset, int blocks, unsigned char * dest) {
+    return DVDReadBlocks(file, offset, blocks, dest);
+  }
+
+  DVDBlockFile(dvd_file_t * f) : 
+  DVDFile(f)
+  {
+    ;
+  }
+
+};
+
+
+//////////////////////////////////////////////////////////////////////
+
+DVDFile::DVDFile(dvd_file_t * f) :
+  file(f)
+{
+  // file shouldn't be 0 !
+}
+
+DVDFile::~DVDFile()
+{
+  DVDCloseFile(file);
+}
+
+
+int DVDFile::fileSize()
+{
+  return DVDFileSize(file);
+}
+
+DVDFile * DVDFile::openFile(dvd_reader_t * reader, const DVDFileData * dat)
+{
+  dvd_file_t * file = DVDOpenFile(reader, dat->title, dat->domain);
+  if(! file)
+    return NULL;
+
+  switch(dat->domain) {
+  case DVD_READ_INFO_FILE:
+  case DVD_READ_INFO_BACKUP_FILE:
+    return new DVDByteFile(file);
+  case DVD_READ_MENU_VOBS:
+  case DVD_READ_TITLE_VOBS:
+    return new DVDBlockFile(file);
+  default:
+    ;
+  }
+  DVDCloseFile(file);           // Because it has been opened !
+  return NULL;
+}

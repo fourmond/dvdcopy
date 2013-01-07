@@ -27,6 +27,7 @@
 #include <iostream>
 #include <vector>
 #include <map>
+#include <memory>
 
 // DVDRead
 #include <dvdread/dvd_reader.h>

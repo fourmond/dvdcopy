@@ -20,6 +20,7 @@
 #include "headers.hh"
 #include "dvdcopy.hh"
 
+#include "dvdfile.hh"
 #include "dvdoutfile.hh"
 
 #include <stdio.h>
@@ -101,8 +102,15 @@ int DVDCopy::copyFile(const DVDFileData * dat, int firstBlock,
   if(dat->number > 1)
     return 0;
 
-  dvd_file_t * file = DVDOpenFile(reader, dat->title, dat->domain);
   DVDOutFile outfile(targetDirectory.c_str(), dat->title, dat->domain);
+
+  DVDFile * f = DVDFile::openFile(reader, dat);
+  if(! f) {
+    std::string fileName = outfile.currentOutputName();
+    printf("\nSkipping file %s (not found)\n", fileName.c_str());
+    return 0;
+  }
+  std::unique_ptr<DVDFile> file(f);
 
   /* Data structures necessary for progress report */
   struct timeval init;
@@ -112,125 +120,80 @@ int DVDCopy::copyFile(const DVDFileData * dat, int firstBlock,
   double estimated_seconds;
   double rate;
   const char * rate_suffix;
-  if(file) {
-    int size = DVDFileSize(file);
-    int current_size = outfile.fileSize();
-    if(firstBlock > 0)
-      current_size = firstBlock; // Seek to the beginning of the
+
+  int size = file->fileSize();
+  int current_size = outfile.fileSize();
+  if(firstBlock > 0)
+    current_size = firstBlock; // Seek to the beginning of the
                                  // region to be read
-    int read;
-    int blk = 0;
-    unsigned nb;		/* The number of blocks we're about to read */
-    int skipped = 0;
-    if(current_size == size) {
-      printf("File already fully read: not reading again\n");
-      return 0;
-    }
-
-    /* Now, if current_size > 0:
-       - seek the input file, if necessary
-       - seek the output file...
-    */
-    if(current_size > 0) {
-      if(dat->domain == DVD_READ_INFO_FILE || 
-         dat->domain == DVD_READ_INFO_BACKUP_FILE)
-	DVDFileSeek(file, current_size * 2048);
-      else
-	blk = current_size;
-
-      outfile.seek(current_size);
-      size -= current_size;
-      const char * fmt = 
-        (firstBlock > 0 ? 
-         "Partial read starting at sector %d\n": 
-         "File already partially read: using %d sectors\n");
-      
-      printf(fmt, current_size);
-    }
-    if(blockNumber > 0)
-      size = blockNumber; // we read only the relevant portion
-    switch(dat->domain) {
-    case DVD_READ_INFO_FILE:
-    case DVD_READ_INFO_BACKUP_FILE:
-      size *= 2048;		/* The number of bytes to read ! */
-      while(size > 0) {
-	read = DVDReadBytes(file, readBuffer, 
-                            (size > BUF_SIZE) ? BUF_SIZE : size);
-	if(read < 0) {
-	  fprintf(stderr, "Error reading file\n");
-	  size = -1;
-	  break;
-	}
-	outfile.writeSectors(readBuffer, read/2048);
-	size -= read;
-      }
-      break;
-    case DVD_READ_MENU_VOBS:
-    case DVD_READ_TITLE_VOBS:
-      /* TODO: error handling */
-      gettimeofday(&init, NULL);
-      printf("Reading %d sectors at a time\n", readNumber); 
-      while(size > 0) {
-	/* First, we determine the number of blocks to be read */
-	if(size > readNumber)
-	  nb = readNumber;
-	else
-	  nb = size;
-	  
-        std::string fileName = outfile.currentOutputName();
-	printf("\rReading block %7d/%d (%s)", 
-	       blk, blk + size, fileName.c_str());
-	read = DVDReadBlocks(file, blk, nb, (unsigned char*) readBuffer);
-
-	if(read < 0) {
-	  /* There was an error reading the file. */
-	  printf("\rError while reading block %d of file %s, skipping\n",
-		 blk, fileName.c_str());
-	  outfile.skipSectors(nb);
-          registerBadSectors(dat, blk, nb);
-	  read = nb;
-	  skipped += nb;
-	}
-	else {
-	  outfile.writeSectors(readBuffer, read);
-	}
-	size -= read;
-	blk += read;
-	gettimeofday(&current, NULL);
-	elapsed_seconds = current.tv_sec - init.tv_sec + 
-	  1e-6 * (current.tv_usec - init.tv_usec);
-	estimated_seconds = elapsed_seconds * (blk + size)/(blk);
-	rate = (blk * 2048.)/(elapsed_seconds);
-	if(rate >= 1e6) {
-	  rate_suffix = "MB/s";
-	  rate /= 1e6;
-	}
-	else if(rate >= 1e3) {
-	  rate_suffix = "kB/s";
-	  rate /= 1e3;
-	}
-	else 
-	  rate_suffix = "B/s";
-	printf(" (%02d:%02d out of %02d:%02d, %5.1f%s)", 
-	       ((int) elapsed_seconds) / 60, ((int) elapsed_seconds) % 60, 
-	       ((int) estimated_seconds) / 60, ((int) estimated_seconds) % 60,
-	       rate, rate_suffix);
-	fflush(stdout);
-      }
-      outfile.closeFile(); 
-      DVDCloseFile(file);
-      if(skipped) {
-	printf("\nThere were %d sectors skipped in this title set\n",
-	       skipped);
-      }
-    }
-    return skipped;
-  }
-  else {
-    std::string fileName = outfile.currentOutputName();
-    printf("\nSkipping file %s (not found)\n", fileName.c_str());
+  int read;
+  int blk = 0;
+  unsigned nb;		/* The number of blocks we're about to read */
+  int skipped = 0;
+  if(current_size == size) {
+    printf("File already fully read: not reading again\n");
     return 0;
   }
+
+  /* TODO: error handling */
+  gettimeofday(&init, NULL);
+  printf("Reading %d sectors at a time\n", readNumber); 
+  while(size > 0) {
+    /* First, we determine the number of blocks to be read */
+    if(size > readNumber)
+      nb = readNumber;
+    else
+      nb = size;
+	  
+    std::string fileName = outfile.currentOutputName();
+    printf("\rReading block %7d/%d (%s)", 
+           blk, blk + size, fileName.c_str());
+    read = file->readBlocks(blk, nb, (unsigned char*) readBuffer);
+
+    if(read < 0) {
+      /* There was an error reading the file. */
+      printf("\nError while reading block %d of file %s, skipping\n",
+             blk, fileName.c_str());
+      outfile.skipSectors(nb);
+      registerBadSectors(dat, blk, nb);
+      read = nb;
+      skipped += nb;
+    }
+    else {
+      outfile.writeSectors(readBuffer, read);
+    }
+    size -= read;
+    blk += read;
+
+    // Progress report
+    gettimeofday(&current, NULL);
+
+    elapsed_seconds = current.tv_sec - init.tv_sec + 
+      1e-6 * (current.tv_usec - init.tv_usec);
+    estimated_seconds = elapsed_seconds * (blk + size)/(blk);
+    rate = (blk * 2048.)/(elapsed_seconds);
+    if(rate >= 1e6) {
+      rate_suffix = "MB/s";
+      rate /= 1e6;
+    }
+    else if(rate >= 1e3) {
+      rate_suffix = "kB/s";
+      rate /= 1e3;
+    }
+    else 
+      rate_suffix = "B/s";
+    printf(" (%02d:%02d out of %02d:%02d, %5.1f%s)", 
+           ((int) elapsed_seconds) / 60, ((int) elapsed_seconds) % 60, 
+           ((int) estimated_seconds) / 60, ((int) estimated_seconds) % 60,
+           rate, rate_suffix);
+    fflush(stdout);
+  }
+  outfile.closeFile(); 
+  if(skipped) {
+    printf("\nThere were %d sectors skipped in this title set\n",
+           skipped);
+  }
+  return skipped;
 }
 
 void DVDCopy::setup(const char *device, const char * target)

@@ -35,7 +35,7 @@ public:
 
   /// Reads a given number of blocks at the given offset, and returns
   /// the number of blocks read, or -1 if an error occurred.
-  virtual int readBlocks(int blocks, int offset, unsigned char * dest);
+  virtual int readBlocks(int offset, int blocks, unsigned char * dest) = 0;
 
   /// Returns the size of the file in blocks
   int fileSize();
@@ -46,7 +46,10 @@ public:
   /// went wrong.
   ///
   /// It actually returns a subclass of DVDFile, depending on the domain.
-  static DVDFile * openFile(DVDFileData * dat);
+  ///
+  /// @todo It still needs a reader argument, while it would be much
+  /// nicer to make it part of DVDFileData ?
+  static DVDFile * openFile(dvd_reader_t * reader, const DVDFileData * dat);
 
   virtual ~DVDFile();
 };
