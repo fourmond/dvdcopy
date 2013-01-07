@@ -26,6 +26,7 @@
 #include <stdexcept>
 #include <iostream>
 #include <vector>
+#include <array>
 #include <map>
 #include <memory>
 

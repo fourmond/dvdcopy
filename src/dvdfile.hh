@@ -29,7 +29,10 @@ protected:
   /// The underlying dvdfile_t object
   dvd_file_t * file;
 
-  DVDFile(dvd_file_t * f);
+  /// And a DVDFileData for output purposes
+  const DVDFileData * dat;
+
+  DVDFile(dvd_file_t * f, const DVDFileData * d);
 
 public:
 
@@ -52,6 +55,16 @@ public:
   static DVDFile * openFile(dvd_reader_t * reader, const DVDFileData * dat);
 
   virtual ~DVDFile();
+
+  /// This functions reads @a blocks of blocks starting at @a start,
+  /// by reads of @a steps block and runs the given functions upon
+  /// successful reads and failed reads.
+  void walkFile(int start, int blocks, int steps, 
+                void (*successfulRead)(int offset, int nb, 
+                                       unsigned char * buffer,
+                                       const DVDFileData * dat),
+                void (*failedRead)(int offset, int nb, 
+                                   const DVDFileData * dat));
 };
 
 

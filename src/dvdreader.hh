@@ -46,7 +46,12 @@ public:
   /// The size of the file
   uint32_t size;
 
-  std::string fileName() const;
+  std::string fileName(bool stripInitialSlash = false, 
+                       int blocks = -1) const;
+
+  /// Returns a suitable file name for given file information
+  static std::string fileName(int title, dvd_read_domain_t domain,
+                              int number);
     
 };
 

@@ -19,6 +19,7 @@
 
 #include "headers.hh"
 #include "dvdoutfile.hh"
+#include "dvdreader.hh"
 
 /* For stat(2), open(2) and comrades... */
 #include <sys/types.h>
@@ -35,43 +36,11 @@
 #define SECTOR_SIZE 2048
 
 
-std::string DVDOutFile::fileName(int title, dvd_read_domain_t domain,
-                                 int number = -1)
-{
-  char buffer[100];             // Large enough
-  const char * format;
-  const char * ext;
-  if(title)
-    format = "VTS_%2$02d_%3$1d.%1$s";
-  else
-    format = "VIDEO_TS.%1$s";
-  switch(domain) {
-  case DVD_READ_INFO_FILE:
-    ext = "IFO"; 
-    number = 0;
-    break;
-  case DVD_READ_INFO_BACKUP_FILE:
-    ext = "BUP"; 
-    number = 0;
-    break;
-  case DVD_READ_MENU_VOBS:
-    ext = "VOB"; 
-    number = 0;
-    break;
-  case DVD_READ_TITLE_VOBS:
-    ext = "VOB"; 
-    if(! number) 		/* Fixing number to at least one */
-      number = 1;
-  }
-  snprintf(buffer, sizeof(buffer), format, ext, title, number);
-  return std::string(buffer);
-}
-
 std::string DVDOutFile::makeFileName(int number) const
 {
   if(number < 0) 
     number = sector / MAX_FILE_SIZE + 1;
-  return fileName(title, domain, number);
+  return DVDFileData::fileName(title, domain, number);
 }
 
 

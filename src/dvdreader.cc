@@ -28,6 +28,53 @@
 #include <unistd.h>
 
 
+std::string DVDFileData::fileName(int title, dvd_read_domain_t domain,
+                                  int number = -1)
+{
+  char buffer[100];             // Large enough
+  const char * format;
+  const char * ext;
+  if(title)
+    format = "VTS_%2$02d_%3$1d.%1$s";
+  else
+    format = "VIDEO_TS.%1$s";
+  switch(domain) {
+  case DVD_READ_INFO_FILE:
+    ext = "IFO"; 
+    number = 0;
+    break;
+  case DVD_READ_INFO_BACKUP_FILE:
+    ext = "BUP"; 
+    number = 0;
+    break;
+  case DVD_READ_MENU_VOBS:
+    ext = "VOB"; 
+    number = 0;
+    break;
+  case DVD_READ_TITLE_VOBS:
+    ext = "VOB"; 
+    if(! number) 		/* Fixing number to at least one */
+      number = 1;
+  }
+  snprintf(buffer, sizeof(buffer), format, ext, title, number);
+  return std::string(buffer);
+}
+
+
+#define MAX_FILE_SIZE (512*1024)
+
+std::string DVDFileData::fileName(bool stripInitialSlash, 
+                                  int blocks) const
+{
+  std::string s(stripInitialSlash ? "VIDEO_TS/": "/VIDEO_TS/");
+  int nb = number;
+  if(domain == DVD_READ_TITLE_VOBS && blocks >= 0) {
+    nb = 1 + blocks/MAX_FILE_SIZE; // Great !
+  }
+  return s + DVDFileData::fileName(title, domain, nb);
+}
+
+//////////////////////////////////////////////////////////////////////
 
 DVDReader::DVDReader(const char * device) : source(device), isDir(false)
 {
@@ -44,11 +91,6 @@ DVDReader::DVDReader(const char * device) : source(device), isDir(false)
   }
 }
 
-std::string DVDFileData::fileName() const
-{
-  std::string s("/VIDEO_TS/");
-  return s + DVDOutFile::fileName(title, domain, number);
-}
 
 DVDFileData * DVDReader::getFileInfo(int title, 
                                      dvd_read_domain_t domain, 
