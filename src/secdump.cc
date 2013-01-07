@@ -68,6 +68,10 @@ int64_t readscr(const unsigned char *buf)
 // http://stnsoft.com/DVD/packhdr.html
 // http://stnsoft.com/DVD/pes-hdr.html
 
+// Possibly one use of this file would be to re-read a DVD file and
+// find out which sectors were not read properly ? That would be
+// helpful for sure...
+
 int main(int argc, char ** argv)
 {
   unsigned char buffer[SECTOR_SIZE];
