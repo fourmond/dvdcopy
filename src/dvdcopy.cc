@@ -111,18 +111,29 @@ int DVDCopy::copyFile(const DVDFileData * dat, int firstBlock,
   }
   DVDOutFile outfile(targetDirectory.c_str(), dat->title, dat->domain);
 
-  auto success = [&outfile](int offset, int nb, 
-                            unsigned char * buffer,
-                            const DVDFileData * dat) {
-    outfile.writeSectors(reinterpret_cast<char*>(buffer), nb);
-  };
 
   int skipped = 0;
-  auto failure = [&outfile, &skipped, this](int blk, int nb, 
-                                            const DVDFileData * dat) {
-    outfile.skipSectors(nb);
-    registerBadSectors(dat, blk, nb);
-    skipped += nb;
+  struct encaps {
+    int & sk;
+    DVDOutFile & of;
+    DVDCopy * dd;
+  } base = { skipped, outfile, this};
+
+  auto success = [](int offset, int nb, 
+                    unsigned char * buffer,
+                    const DVDFileData * dat,
+                    void * en) {
+    encaps * b = (encaps*) en;
+    b->of.writeSectors(reinterpret_cast<char*>(buffer), nb);
+  };
+
+  auto failure = [](int blk, int nb, 
+                    const DVDFileData * dat,
+                    void * en) {
+    encaps * b = (encaps*) en;
+    b->of.skipSectors(nb);
+    b->dd->registerBadSectors(dat, blk, nb);
+    b->sk += nb;
   };
 
   int size = file->fileSize();
@@ -137,7 +148,8 @@ int DVDCopy::copyFile(const DVDFileData * dat, int firstBlock,
   if(blockNumber < 0)
     blockNumber = size - current_size;
 
-  file->walkFile(current_size, blockNumber, readNumber, success, failure);
+  file->walkFile(current_size, blockNumber, readNumber, 
+                 success, failure, &base);
 
   outfile.closeFile(); 
   if(skipped) {

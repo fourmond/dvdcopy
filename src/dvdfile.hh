@@ -62,9 +62,12 @@ public:
   void walkFile(int start, int blocks, int steps, 
                 void (*successfulRead)(int offset, int nb, 
                                        unsigned char * buffer,
-                                       const DVDFileData * dat),
+                                       const DVDFileData * dat,
+                                       void * ptr),
                 void (*failedRead)(int offset, int nb, 
-                                   const DVDFileData * dat));
+                                   const DVDFileData * dat,
+                                   void * ptr),
+                void * ptr);
 };
 
 

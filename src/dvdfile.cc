@@ -125,9 +125,12 @@ DVDFile * DVDFile::openFile(dvd_reader_t * reader, const DVDFileData * dat)
 void DVDFile::walkFile(int start, int blocks, int steps, 
                        void (*successfulRead)(int offset, int nb, 
                                               unsigned char * buffer,
-                                              const DVDFileData * dat),
+                                              const DVDFileData * dat, 
+                                              void * d),
                        void (*failedRead)(int offset, int nb, 
-                                          const DVDFileData * dat))
+                                          const DVDFileData * dat,
+                                          void * d),
+                       void * d)
 {
   /* Data structures necessary for progress report */
   struct timeval init;
@@ -168,11 +171,11 @@ void DVDFile::walkFile(int start, int blocks, int steps,
       /* There was an error reading the file. */
       printf("\nError while reading block %d of file %s, skipping\n",
              blk, fileName.c_str());
-      failedRead(blk, nb, dat);
+      failedRead(blk, nb, dat, d);
       read = nb;
     }
     else 
-      successfulRead(blk, read, readBuffer.get(), dat);
+      successfulRead(blk, read, readBuffer.get(), dat, d);
 
     remaining -= read;
     blk += read;
