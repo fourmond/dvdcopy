@@ -164,6 +164,8 @@ int DVDCopy::copyFile(const DVDFileData * dat, int firstBlock,
   if(blockNumber < 0)
     blockNumber = size - current_size;
 
+  outfile.seek(current_size);
+
   file->walkFile(current_size, blockNumber, readNumber, 
                  success, failure);
 
