@@ -29,6 +29,7 @@
 #include <array>
 #include <map>
 #include <memory>
+#include <functional>
 
 // DVDRead
 #include <dvdread/dvd_reader.h>

@@ -112,27 +112,17 @@ int DVDCopy::copyFile(const DVDFileData * dat, int firstBlock,
 
 
   int skipped = 0;
-  struct encaps {
-    int & sk;
-    DVDOutFile & of;
-    DVDCopy * dd;
-  } base = { skipped, outfile, this};
-
-  auto success = [](int offset, int nb, 
-                    unsigned char * buffer,
-                    const DVDFileData * dat,
-                    void * en) {
-    encaps * b = (encaps*) en;
-    b->of.writeSectors(reinterpret_cast<char*>(buffer), nb);
+  auto success = [&outfile](int offset, int nb, 
+                            unsigned char * buffer,
+                            const DVDFileData * dat) {
+    outfile.writeSectors(reinterpret_cast<char*>(buffer), nb);
   };
 
-  auto failure = [](int blk, int nb, 
-                    const DVDFileData * dat,
-                    void * en) {
-    encaps * b = (encaps*) en;
-    b->of.skipSectors(nb);
-    b->dd->registerBadSectors(dat, blk, nb);
-    b->sk += nb;
+  auto failure = [&outfile, &skipped, this](int blk, int nb, 
+                                            const DVDFileData * dat) {
+    outfile.skipSectors(nb);
+    registerBadSectors(dat, blk, nb);
+    skipped += nb;
   };
 
   int size = file->fileSize();
@@ -148,7 +138,7 @@ int DVDCopy::copyFile(const DVDFileData * dat, int firstBlock,
     blockNumber = size - current_size;
 
   file->walkFile(current_size, blockNumber, readNumber, 
-                 success, failure, &base);
+                 success, failure);
 
   outfile.closeFile(); 
   if(skipped) {
@@ -242,30 +232,26 @@ void DVDCopy::scanForBadSectors(const char *device,
     std::unique_ptr<DVDFile> file(DVDFile::openFile(reader, dat));
     int sz = file->fileSize();
 
-    auto success = [](int blk, int nb, 
+    auto success = [this](int blk, int nb, 
                       unsigned char * buf,
-                      const DVDFileData * dat,
-                      void * en) {
-      DVDCopy * dd = reinterpret_cast<DVDCopy *>(en);
+                      const DVDFileData * dat) {
       for(int i = 0; i < nb; i++) {
         unsigned char * buffer = buf + i * 2048;
         int first_pes_offset = 13 + (buffer[13] & 0x7);
         if(buffer[2] == 1 && buffer[first_pes_offset + 3] == 1)
           continue;
         else
-          dd->registerBadSectors(dat, blk + i, 1);
+          registerBadSectors(dat, blk + i, 1);
       }
     };
 
-    auto failure = [](int blk, int nb, 
-                      const DVDFileData * dat,
-                      void * en) {
-      DVDCopy * dd = reinterpret_cast<DVDCopy *>(en);
-      dd->registerBadSectors(dat, blk, nb);
+    auto failure = [this](int blk, int nb, 
+                      const DVDFileData * dat) {
+      registerBadSectors(dat, blk, nb);
     };
 
     file->walkFile(0, sz, 128, 
-                   success, failure, this);
+                   success, failure);
     /// @todo Compact the bad sectors file (this should be done at the
     /// very end, rewriting the whole file)
   }

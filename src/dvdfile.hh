@@ -60,14 +60,13 @@ public:
   /// by reads of @a steps block and runs the given functions upon
   /// successful reads and failed reads.
   void walkFile(int start, int blocks, int steps, 
-                void (*successfulRead)(int offset, int nb, 
-                                       unsigned char * buffer,
-                                       const DVDFileData * dat,
-                                       void * ptr),
-                void (*failedRead)(int offset, int nb, 
-                                   const DVDFileData * dat,
-                                   void * ptr),
-                void * ptr);
+                const std::function<void (int offset, int nb, 
+                                          unsigned char * buffer,
+                                          const DVDFileData * dat)> & 
+                successfulRead,
+                const std::function<void (int offset, int nb, 
+                                          const DVDFileData * dat)> & 
+                failedRead);
 };
 
 
