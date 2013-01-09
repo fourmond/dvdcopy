@@ -311,8 +311,9 @@ DVDCopy::~DVDCopy()
 void DVDCopy::openBadSectorsFile(const char * mode)
 {
   if(! badSectors) {
-    std::string bsf = targetDirectory + ".bad";
-    badSectors = fopen(bsf.c_str(), mode);
+    if(badSectorsFileName.empty())
+      badSectorsFileName = targetDirectory + ".bad";
+    badSectors = fopen(badSectorsFileName.c_str(), mode);
   }
 }
 
@@ -327,6 +328,14 @@ void DVDCopy::registerBadSectors(const DVDFileData * dat,
     fflush(badSectors);
   }
 }
+
+void DVDCopy::setBadSectorsFileName(const char * file)
+{
+  badSectorsFileName = file;
+  std::cout << "Using '" << badSectorsFileName << "' for bad sectors " 
+            << std::endl;
+}
+
 
 int DVDCopy::findFile(int title, dvd_read_domain_t domain, int number)
 {

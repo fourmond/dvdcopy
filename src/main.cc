@@ -44,6 +44,7 @@ static struct option long_options[] = {
   { "eject", 0, NULL, 'e' },
   { "list", 1, NULL, 'l' },
   { "second-pass", 0, NULL, 's' },
+  { "bad-sectors", 1, NULL, 'b' },
   { "scan", 0, NULL, 'S' },
   { NULL, 0, NULL, 0}
 };
@@ -57,7 +58,7 @@ int main(int argc, char ** argv)
   int scan = 0;
 
   do {
-    option = getopt_long(argc, argv, "hel:sS",
+    option = getopt_long(argc, argv, "b:hel:sS",
                          long_options, NULL);
     
     switch(option) {
@@ -67,6 +68,9 @@ int main(int argc, char ** argv)
       return 0;
     case 'e': 
       std::cerr << "Eject not implemented yet" << std::endl;
+      break;
+    case 'b': 
+      dvd.setBadSectorsFileName(optarg);
       break;
     case 'l': 
       {

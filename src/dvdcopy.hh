@@ -96,6 +96,11 @@ class DVDCopy {
   /// reads the bad sectors from the bad sectors file
   void readBadSectors();
 
+  /// The name for the bad sectors file. It is constructed from the
+  /// target if empty.
+  std::string badSectorsFileName;
+
+
   /// Opens the bad sectors file with the given mode, if not open already.
   ///
   /// @todo There should be a way to track the mode last used in order
@@ -109,6 +114,9 @@ class DVDCopy {
 public:
 
   DVDCopy();
+
+  /// Sets the bad sectors file name
+  void setBadSectorsFileName(const char * file);
 
   /// Copies from source device to destination directory. The target
   /// directory should probably not exist.
