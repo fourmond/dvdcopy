@@ -44,6 +44,33 @@
 int debug = 1;
 
 
+std::string BadSectors::toString() const
+{
+  char buffer[1024];
+  snprintf(buffer, sizeof(buffer),
+           "%s: %d,%d,%d  %d (%d)",
+           file->fileName().c_str(),
+           file->title,
+           file->domain,
+           file->number,
+           start, number);
+  return std::string(buffer);
+}
+
+bool BadSectors::tryMerge(const BadSectors & follower)
+{
+  if(follower.file != file)
+    return false;
+  if(start + number != follower.start) 
+    return false;
+  number += follower.number;
+  return true;
+}
+
+
+//////////////////////////////////////////////////////////////////////
+
+
 DVDCopy::DVDCopy() : badSectors(NULL)
 {
   reader = NULL;
@@ -219,8 +246,6 @@ void DVDCopy::scanForBadSectors(const char *device,
 {
   setup(device, NULL);
 
-  badSectors = fopen(badSectorsFile, "w");
-
   for(std::vector<DVDFileData *>::iterator i = files.begin(); 
       i != files.end(); i++) {
     DVDFileData * dat = *i;
@@ -241,20 +266,35 @@ void DVDCopy::scanForBadSectors(const char *device,
         if(buffer[2] == 1 && buffer[first_pes_offset + 3] == 1)
           continue;
         else
-          registerBadSectors(dat, blk + i, 1);
+          registerBadSectors(dat, blk + i, 1, true);
       }
     };
 
     auto failure = [this](int blk, int nb, 
                       const DVDFileData * dat) {
-      registerBadSectors(dat, blk, nb);
+      registerBadSectors(dat, blk, nb, true);
     };
 
     file->walkFile(0, sz, 128, 
                    success, failure);
-    /// @todo Compact the bad sectors file (this should be done at the
-    /// very end, rewriting the whole file)
   }
+
+  // OK, now, we have a list of bad sectors. We simplify it
+  std::vector<BadSectors> simplifiedBad;
+  for(int i = 0; i < badSectorsList.size(); i++) {
+    const BadSectors & bs = badSectorsList[i];
+    if(!i)
+      simplifiedBad.push_back(bs);
+    else {
+      if(! simplifiedBad.back().tryMerge(bs))
+        simplifiedBad.push_back(bs);
+    }
+  }
+
+  FILE * bad = fopen(badSectorsFile, "w");
+  for(int i = 0; i < simplifiedBad.size(); i++)
+    fprintf(bad, "%s\n",
+            simplifiedBad[i].toString().c_str());
 }
 
 DVDCopy::~DVDCopy()
@@ -277,18 +317,15 @@ void DVDCopy::openBadSectorsFile(const char * mode)
 }
 
 void DVDCopy::registerBadSectors(const DVDFileData * dat, 
-                                 int beg, int size)
+                                 int beg, int size, bool dontWrite)
 {
-  openBadSectorsFile("a");
-  fprintf(badSectors, "%s: %d,%d,%d  %d (%d)\n",
-          dat->fileName().c_str(),
-          dat->title,
-          dat->domain,
-          dat->number,
-          beg, size);
-  fflush(badSectors);
-
   badSectorsList.push_back(BadSectors(dat, beg, size));
+  if(! dontWrite) {
+    openBadSectorsFile("a");
+    fprintf(badSectors, "%s\n",
+            badSectorsList.back().toString().c_str());
+    fflush(badSectors);
+  }
 }
 
 int DVDCopy::findFile(int title, dvd_read_domain_t domain, int number)

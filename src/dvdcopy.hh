@@ -22,6 +22,33 @@
 
 #include "dvdreader.hh"
 
+/// Class representing a series of consecutive bad sectors.
+///
+/// @todo Write to- and from- string methods.
+class BadSectors {
+public:
+
+  /// The underlying DVD file (ie something in the files list)
+  const DVDFileData * file;
+    
+  /// The starting sector
+  int start;
+
+  /// The number of bad sectors;
+  int number;
+
+  BadSectors(const DVDFileData * f, int s, int n) :
+    file(f), start(s), number(n) {;}
+
+  /// Transform into a string
+  std::string toString() const;
+
+  /// If the given bad sector is next to this one, appends it and
+  /// return true, else return false
+  bool tryMerge(const BadSectors & follower);
+};
+
+
 /// Handles the actual copying job, from a source to a target.
 class DVDCopy {
   /// Copies one file.
@@ -47,10 +74,12 @@ class DVDCopy {
   /// In the hope to be read again...
   FILE * badSectors;
 
-  /// Writes a bad sector list to the file, and add them to the
-  /// badSectors list.
+  /// Writes a bad sector list to the bad sectors file (unless
+  /// dontWrite is true), and add them to the badSectors list (in any
+  /// case).
   void registerBadSectors(const DVDFileData * dat, 
-                          int beg, int size);
+                          int beg, int size, 
+                          bool dontWrite = false);
 
 
   /// sets up the reader and gets the list of files, and sets up the
@@ -59,25 +88,6 @@ class DVDCopy {
 
   /// The underlying files of the source
   std::vector<DVDFileData *> files;
-
-  /// Subclass representing a single line in a bad sectors file.
-  ///
-  /// @todo Write to- and from- string methods.
-  class BadSectors {
-  public:
-
-    /// The underlying DVD file (ie something in the files list)
-    const DVDFileData * file;
-    
-    /// The starting sector
-    int start;
-
-    /// The number of bad sectors;
-    int number;
-
-    BadSectors(const DVDFileData * f, int s, int n) :
-      file(f), start(s), number(n) {;}
-  };
 
   /// The list of bad sectors, either read from the bad sectors file
   /// or directly populated registerBadSectors
