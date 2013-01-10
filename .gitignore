@@ -6,7 +6,6 @@
 # Build and cache files
 Makefile
 config.*
-install-sh
 autom4te.cache
 .deps
 *.o
