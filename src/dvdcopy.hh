@@ -66,6 +66,9 @@ class DVDCopy {
 
   /// The DVD device we're reading
   dvd_reader_t * reader;
+
+  /// The source device
+  std::string sourceDevice;
   
   /// The target directory.
   std::string targetDirectory;
@@ -131,6 +134,9 @@ public:
   /// Scans the source for bad sectors and make a bad sector list
   void scanForBadSectors(const char * source, 
                          const char * badSectorsFileName);
+
+  /// Attempts to eject the drive.
+  void ejectDrive();
 
   ~DVDCopy();
 };

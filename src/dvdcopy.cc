@@ -23,6 +23,8 @@
 #include "dvdfile.hh"
 #include "dvdoutfile.hh"
 
+#include "dvddrive.hh"
+
 #include <stdio.h>
 
 #include <sys/types.h>
@@ -180,6 +182,7 @@ int DVDCopy::copyFile(const DVDFileData * dat, int firstBlock,
 void DVDCopy::setup(const char *device, const char * target)
 {
   DVDReader r(device);
+  sourceDevice = device;
   files = r.listFiles();
 
   reader = DVDOpen(device);
@@ -430,4 +433,10 @@ void DVDCopy::readBadSectors()
     }
   }
   
+}
+
+void DVDCopy::ejectDrive()
+{
+  if(! sourceDevice.empty())
+    DVDDrive::eject(sourceDevice.c_str());
 }

@@ -60,6 +60,7 @@ int main(int argc, char ** argv)
   int option;
   int secondPass = 0;
   int scan = 0;
+  int eject = 0;
 
   do {
     option = getopt_long(argc, argv, "b:hel:sS",
@@ -71,7 +72,7 @@ int main(int argc, char ** argv)
       printHelp(argv[0]);
       return 0;
     case 'e': 
-      std::cerr << "Eject not implemented yet" << std::endl;
+      eject = 1;
       break;
     case 'b': 
       dvd.setBadSectorsFileName(optarg);
@@ -101,5 +102,8 @@ int main(int argc, char ** argv)
     dvd.scanForBadSectors(argv[optind], argv[optind+1]);
   else
     dvd.copy(argv[optind], argv[optind+1]);
+
+  if(eject)
+    dvd.ejectDrive();
   return 0;
 }
