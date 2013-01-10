@@ -222,10 +222,15 @@ void DVDCopy::secondPass(const char *device, const char * target)
 {
   setup(device, target);
   readBadSectors();
+  closeBadSectorsFile();
+  badSectors = NULL;
   int totalMissing = 0;
 
-  for(int i = 0; i < badSectorsList.size(); i++) {
-    BadSectors & bs = badSectorsList[i];
+  std::vector<BadSectors> oldBadSectors;
+  std::swap(oldBadSectors, badSectorsList);
+
+  for(int i = 0; i < oldBadSectors.size(); i++) {
+    BadSectors & bs = oldBadSectors[i];
     printf("Trying to read %d bad sectors from file %s at %d:\n",
            bs.number,
            bs.file->fileName().c_str(),
@@ -237,6 +242,16 @@ void DVDCopy::secondPass(const char *device, const char * target)
     else
       printf("\n -> apparently successfully read missing sectors\n");
     totalMissing += nb;
+
+    // Now, we update the bad sectors list file
+    printf("Updating the bad sectors file '%s'\n",
+           badSectorsFileName.c_str());
+    openBadSectorsFile("w");
+    for(int j = 0; j < badSectorsList.size(); j++)
+      fprintf(badSectors, "%s\n", badSectorsList[j].toString().c_str());
+    for(int j = i+1; j < oldBadSectors.size(); j++)
+      fprintf(badSectors, "%s\n", oldBadSectors[j].toString().c_str());
+    closeBadSectorsFile();
   }
   printf("\nAltogether, there are still %d missing sectors\n", 
          totalMissing);
@@ -303,8 +318,7 @@ DVDCopy::~DVDCopy()
 {
   if(reader)
     DVDClose(reader);
-  if(badSectors)
-    fclose(badSectors);
+  closeBadSectorsFile();
   for(std::vector<DVDFileData *>::iterator i = files.begin(); 
       i != files.end(); i++)
     delete *i;                  // Keep it clean;
@@ -317,6 +331,13 @@ void DVDCopy::openBadSectorsFile(const char * mode)
       badSectorsFileName = targetDirectory + ".bad";
     badSectors = fopen(badSectorsFileName.c_str(), mode);
   }
+}
+
+void DVDCopy::closeBadSectorsFile()
+{
+  if(badSectors)
+    fclose(badSectors);
+  badSectors = NULL;
 }
 
 void DVDCopy::registerBadSectors(const DVDFileData * dat, 

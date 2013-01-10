@@ -107,6 +107,9 @@ class DVDCopy {
   /// not to try to read from a descriptor open for writing.
   void openBadSectorsFile(const char * mode);
 
+  /// Closes the bad sectors file !
+  void closeBadSectorsFile();
+
   /// Finds the index of the file referred to by the title, domain,
   /// number triplet. Returns -1 if not found.
   int findFile(int title, dvd_read_domain_t domain, int number);
