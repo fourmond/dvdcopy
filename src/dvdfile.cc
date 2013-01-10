@@ -184,7 +184,8 @@ void DVDFile::walkFile(int start, int blocks, int steps,
 
     elapsed_seconds = current.tv_sec - init.tv_sec + 
       1e-6 * (current.tv_usec - init.tv_usec);
-    estimated_seconds = elapsed_seconds * (remaining)/(blk - start);
+    estimated_seconds = elapsed_seconds * (remaining + blk - start)/
+      (blk - start);
     rate = ((blk - start) * 2048.)/(elapsed_seconds);
     if(rate >= 1e6) {
       rate_suffix = "MB/s";
