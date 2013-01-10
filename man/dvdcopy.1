@@ -20,20 +20,35 @@ dvdcopy \- error-resistant DVD to disk copier
 
 .SH SYNOPSIS
 
-.B dvdcopy 
-.I /dev/dvd target-directory
-.I arguments
+First copy:
 
 .B dvdcopy 
+.I [options]
+.I /dev/dvd target-directory
+
+Second pass to try to copy bad sectors that were missing in the first pass:
+
+.B dvdcopy 
+.I [options]
 .I --second-pass
 .I /dev/dvd target-directory
 .I arguments
+
+List the contents of the DVD rather than copying it:
+
+.B dvdcopy 
+.I --list
+.I /dev/dvd
 
 
 .SH DESCRIPTION
 
 .B dvdcopy
-copies the contents of a DVD device to a directory. It uses 
+copies the contents of a DVD device (typically
+.I /dev/dvd\fR,
+or
+.I /dev/dvd2\fR, 
+etc) to a directory. It uses
 .I libdvdread
 who in turn may make use of
 .I libdvdcss
@@ -54,7 +69,16 @@ In the first run,
 just copies the sectors it has no difficulty to read, and writes out a
 list of bad sectors to the 
 .I target-directory.bad
-file (if that file is missing, then everything went fine !).
+file (if that file is missing, then everything went fine !). 
+
+.B Note: 
+Make sure you wait until the end of the copy, else
+.I --second-pass 
+will not help you ! However, you can run the first run again (first
+command above), and
+.B dvdcopy
+will be smart enough to read only the parts of the files that were not
+read yet.
 
 To try reading these bad sectors, clean up the DVD the best you can,
 and run 
@@ -63,8 +87,10 @@ with the
 .I --second-pass 
 option (as above). With a bit of luck, you'll get a bit (or a lot)
 more sectors read this time. Try using a different drive if you have,
-it may help.
-
+it may help. The bad sectors file is updated during the second pass,
+so if there are still bad sectors, try reading again and again, until
+there are no bad sectors left (or you give up because the disc is too
+scratched anyway !).
 
 
 .SH OPTIONS
@@ -75,8 +101,56 @@ it may help.
 runs a second try, reading only the sectors that were unsucessfully
 read in the first pass (and stored in the 
 .I target-directory.bad
-plain text file). Others arguments as in the first pass; don't forget
-them !
+plain text file). Others arguments must be the same as in the first
+pass. The bad sectors file is update.
+
+.TP
+.B -e\fR, \fB --eject
+attempts to eject the DVD drive after the copy.
+
+
+.TP 
+.B -l\fR, \fB --list
+instead of copying the DVD, just lists the files present on it that 
+.B dvdcopy
+would copy.
+
+.TP 
+.B -b\fR, \fB --bad-sectors \fIfile
+uses 
+.I file
+as the bad sector file (both for input and output).
+
+
+.SH FEATURES
+
+Many DVD manufacturers now use several times the same file on a DVD to
+make the total file size much larger than the media size (I've seen
+cases reaching over 60 GB on a 8GB disk!). 
+.B dvdcopy
+is smart enough to detect that and will just make hardlinks in the
+target directory.
+
+As most copy protection techniques additional to the CSS system are
+based on inserting bad sectors here and there, 
+.B dvdcopy
+is actually quite apt at defeating them. So far, the only DVDs that
+ever resisted me are not copy-protected ones, but just badly damaged
+ones !
+
+.SH WHY READ TO A DIRECTORY ?
+
+Most programs read DVD into an iso image file. I find reading to a
+directory is simpler. Most DVD player programs have no difficulty
+opening directories containing DVDs. As a exemple, opening the
+.I MyMovie
+DVD directory in the current directory with 
+.B xine\fR(1)
+is just a matter of running:
+
+.TP 4
+.I xine dvd://`pwd`/MyMovie
+
 
 .SH AUTHOR
 

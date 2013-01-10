@@ -35,7 +35,11 @@ void printHelp(const char * progname)
             << "Copies the DVD at the device source to the directory target\n\n"
             << "Options: \n" 
             << " -h, --help: print this help message\n"
-            << " -e, --eject: attempts to eject the source at the end\n";
+            << " -l, --list: list files contained on the DVD\n"
+            << " -s, --second-pass: run a second pass reading only bad sectors\n"
+            << " -b, --bad-sectors: specify an alternate bad sectors file\n" 
+            << " -S, --scan: scan directory for bad sectors\n" 
+            << " -e, --eject: attempts to eject the source after copying\n";
     
 }
 
