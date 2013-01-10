@@ -77,6 +77,7 @@ class DVDCopy {
   /// In the hope to be read again...
   FILE * badSectors;
 
+
   /// Writes a bad sector list to the bad sectors file (unless
   /// dontWrite is true), and add them to the badSectors list (in any
   /// case).
@@ -137,6 +138,10 @@ public:
 
   /// Attempts to eject the drive.
   void ejectDrive();
+
+  /// Number of sectors read in one go (in the normal operations)
+  int sectorsRead;
+
 
   ~DVDCopy();
 };

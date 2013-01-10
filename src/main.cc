@@ -36,6 +36,7 @@ void printHelp(const char * progname)
             << "Options: \n" 
             << " -h, --help: print this help message\n"
             << " -l, --list: list files contained on the DVD\n"
+            << " -n, --number NB:  read NB sectors at a time\n"
             << " -s, --second-pass: run a second pass reading only bad sectors\n"
             << " -b, --bad-sectors: specify an alternate bad sectors file\n" 
             << " -S, --scan: scan directory for bad sectors\n" 
@@ -47,6 +48,7 @@ static struct option long_options[] = {
   { "help", 0, NULL, 'h'},
   { "eject", 0, NULL, 'e' },
   { "list", 1, NULL, 'l' },
+  { "number", 1, NULL, 'n' },
   { "second-pass", 0, NULL, 's' },
   { "bad-sectors", 1, NULL, 'b' },
   { "scan", 0, NULL, 'S' },
@@ -63,7 +65,7 @@ int main(int argc, char ** argv)
   int eject = 0;
 
   do {
-    option = getopt_long(argc, argv, "b:hel:sS",
+    option = getopt_long(argc, argv, "b:hel:sSn:",
                          long_options, NULL);
     
     switch(option) {
@@ -76,6 +78,12 @@ int main(int argc, char ** argv)
       break;
     case 'b': 
       dvd.setBadSectorsFileName(optarg);
+      break;
+    case 'n':  {
+      int nb = atoi(optarg);
+      if(nb > 0)
+        dvd.sectorsRead = nb;
+    }
       break;
     case 'l': 
       {

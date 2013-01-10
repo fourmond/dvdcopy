@@ -39,13 +39,6 @@
 #include <regex.h>
 
 
-
-#define BUF_BLOCK_SIZE 128
-#define BUF_SIZE (BUF_BLOCK_SIZE * 2048)
-
-int debug = 1;
-
-
 std::string BadSectors::toString() const
 {
   char buffer[1024];
@@ -73,7 +66,7 @@ bool BadSectors::tryMerge(const BadSectors & follower)
 //////////////////////////////////////////////////////////////////////
 
 
-DVDCopy::DVDCopy() : badSectors(NULL)
+DVDCopy::DVDCopy() : badSectors(NULL), sectorsRead(128)
 {
   reader = NULL;
 }
@@ -87,7 +80,7 @@ int DVDCopy::copyFile(const DVDFileData * dat, int firstBlock,
   /// fine)
 
   if(readNumber < 0)
-    readNumber = BUF_BLOCK_SIZE;
+    readNumber = sectorsRead;
 
   // First, looking for duplicates:
   if(dat->dup) {
@@ -295,7 +288,7 @@ void DVDCopy::scanForBadSectors(const char *device,
       registerBadSectors(dat, blk, nb, true);
     };
 
-    file->walkFile(0, sz, 128, 
+    file->walkFile(0, sz, sectorsRead, 
                    success, failure);
   }
 
