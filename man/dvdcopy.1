@@ -1,0 +1,86 @@
+.\" This is the manual page for dvdcopy
+.\"
+.\" Copyright 2013 by Vincent Fourmond
+.\"
+.\" This program is free software; you can redistribute it and/or modify
+.\" it under the terms of the GNU General Public License as published by
+.\" the Free Software Foundation; either version 2 of the License, or
+.\" (at your option) any later version.
+.\"  
+.\" This program is distributed in the hope that it will be useful,
+.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License for more details (in the COPYING file).
+.\"
+.TH DVDCOPY 1 "16" "" "Error-resistant DVD to disk copier"
+
+
+.SH NAME
+dvdcopy \- error-resistant DVD to disk copier
+
+.SH SYNOPSIS
+
+.B dvdcopy 
+.I /dev/dvd target-directory
+.I arguments
+
+.B dvdcopy 
+.I --second-pass
+.I /dev/dvd target-directory
+.I arguments
+
+
+.SH DESCRIPTION
+
+.B dvdcopy
+copies the contents of a DVD device to a directory. It uses 
+.I libdvdread
+who in turn may make use of
+.I libdvdcss
+that can decode DVDs protected with the content scrambling protection
+(ie most of the ones you can ever get).
+
+.B dvdcopy\fR\'s
+main features is its capacity to recover from read errors. It has been
+designed and enriched to cope with DVDs borrowed from public
+libraries, that in general are so damaged that a direct read with 
+.B xine\fR(1)
+or
+.B vlc\fR(1)
+fails.
+
+In the first run, 
+.B dvdcopy
+just copies the sectors it has no difficulty to read, and writes out a
+list of bad sectors to the 
+.I target-directory.bad
+file (if that file is missing, then everything went fine !).
+
+To try reading these bad sectors, clean up the DVD the best you can,
+and run 
+.B dvdcopy
+with the 
+.I --second-pass 
+option (as above). With a bit of luck, you'll get a bit (or a lot)
+more sectors read this time. Try using a different drive if you have,
+it may help.
+
+
+
+.SH OPTIONS
+
+
+.TP 8
+.B -s\fR, \fB --second-pass
+runs a second try, reading only the sectors that were unsucessfully
+read in the first pass (and stored in the 
+.I target-directory.bad
+plain text file). Others arguments as in the first pass; don't forget
+them !
+
+.SH AUTHOR
+
+.B dvdcopy
+was written by Vincent Fourmond.
+
+.SH BUGS
