@@ -3,16 +3,11 @@
 # Temporary files
 *~
 
-# Generated files/autoconf/automake files
+# Build and cache files
 Makefile
-configure
 config.*
-*.in
-aclocal*
-autom*
 install-sh
-missing
-depcomp
+autom4te.cache
 .deps
 *.o
 dvdcopy
