@@ -66,10 +66,12 @@ bool BadSectors::tryMerge(const BadSectors & follower)
 //////////////////////////////////////////////////////////////////////
 
 
-DVDCopy::DVDCopy() : badSectors(NULL), sectorsRead(128)
+DVDCopy::DVDCopy() : badSectors(NULL), sectorsRead(-1)
 {
   reader = NULL;
 }
+
+#define STANDARD_READ 128
 
 
 int DVDCopy::copyFile(const DVDFileData * dat, int firstBlock, 
@@ -80,7 +82,7 @@ int DVDCopy::copyFile(const DVDFileData * dat, int firstBlock,
   /// fine)
 
   if(readNumber < 0)
-    readNumber = sectorsRead;
+    readNumber = STANDARD_READ;
 
   // First, looking for duplicates:
   if(dat->dup) {
@@ -231,7 +233,8 @@ void DVDCopy::secondPass(const char *device, const char * target)
            bs.number,
            bs.file->fileName().c_str(),
            bs.start);
-    int nb = copyFile(bs.file, bs.start, bs.number, 1);
+    int nb = copyFile(bs.file, bs.start, bs.number, 
+                      (sectorsRead > 0 ? sectorsRead : 1));
     if(nb > 0)
       printf("\n -> still got %d bad sectors (out of %d)\n",
              nb, bs.number);
@@ -288,7 +291,7 @@ void DVDCopy::scanForBadSectors(const char *device,
       registerBadSectors(dat, blk, nb, true);
     };
 
-    file->walkFile(0, sz, sectorsRead, 
+    file->walkFile(0, sz, (sectorsRead > 0 ? sectorsRead : -1), 
                    success, failure);
   }
 
