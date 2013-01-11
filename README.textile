@@ -9,6 +9,28 @@ libraries, as those are too scratched to be viewed directly with
 DVD-playing software such as xine, and must be copied to hard disk
 first.
 
+h2. Installation instructions
+
+Make sure you have the @dvdread@ development files installed first,
+which on Debian based distros such as Ubuntu is just a matter of running:
+
+<pre>
+% sudo apt-get install libdvdread-dev
+</pre>
+
+Then, unpack the tarball and run
+
+<pre>
+% ./configure
+% make 
+% sudo make install
+</pre>
+
+That should get you running.
+
+
+h2. Use
+
 Typical use:
 
 <pre>
@@ -23,4 +45,8 @@ in directories. For instance, with xine, you would use:
 % xine dvd://`pwd`/Movie
 </pre>
 
+h2. Caveats
 
+@dvdcopy@ won't work on devices you don't have read access to. On
+Debian systems, this usually means you need to be member of the
+@cdrom@ group.
