@@ -3996,6 +3996,8 @@ done
 ac_fn_c_check_header_mongrel "$LINENO" "dvdread/dvd_reader.h" "ac_cv_header_dvdread_dvd_reader_h" "$ac_includes_default"
 if test "x$ac_cv_header_dvdread_dvd_reader_h" = xyes; then :
 
+else
+  as_fn_error $? "cannot find dvdread headers, please install libdvdread-dev" "$LINENO" 5
 fi
 
 
@@ -4042,7 +4044,10 @@ _ACEOF
 
   LIBS="-ldvdread $LIBS"
 
+else
+  as_fn_error $? "cannot link to dvdread" "$LINENO" 5
 fi
+
 
 ac_fn_c_check_header_mongrel "$LINENO" "getopt.h" "ac_cv_header_getopt_h" "$ac_includes_default"
 if test "x$ac_cv_header_getopt_h" = xyes; then :
