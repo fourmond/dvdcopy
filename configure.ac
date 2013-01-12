@@ -18,6 +18,13 @@ AC_LANG([C++])
 
 AX_CXX_COMPILE_STDCXX_11()
 
-
+AC_MSG_CHECKING([for C++11 lambda support])
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([], [
+        auto l = [[]]() {};])
+    ],
+    AC_MSG_RESULT(ok),
+    AC_MSG_RESULT(not available)
+    AC_MSG_ERROR([C++11 "lambda" support required; use g++ 4.7 or newer])
+)
 	
 AC_OUTPUT([Makefile])
