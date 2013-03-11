@@ -27,6 +27,11 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+bool DVDFileData::isBackup() const
+{
+  return domain == DVD_READ_INFO_BACKUP_FILE;
+}
+
 
 std::string DVDFileData::fileName(int title, dvd_read_domain_t domain,
                                   int number = -1)

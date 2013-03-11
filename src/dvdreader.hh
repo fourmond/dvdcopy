@@ -52,6 +52,9 @@ public:
   /// Returns a suitable file name for given file information
   static std::string fileName(int title, dvd_read_domain_t domain,
                               int number);
+
+  /// Whether the file is a backup file
+  bool isBackup() const;
     
 };
 

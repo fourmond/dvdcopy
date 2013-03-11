@@ -66,7 +66,7 @@ bool BadSectors::tryMerge(const BadSectors & follower)
 //////////////////////////////////////////////////////////////////////
 
 
-DVDCopy::DVDCopy() : badSectors(NULL), sectorsRead(-1)
+DVDCopy::DVDCopy() : badSectors(NULL), sectorsRead(-1), skipBUP(true)
 {
   reader = NULL;
 }
@@ -83,6 +83,13 @@ int DVDCopy::copyFile(const DVDFileData * dat, int firstBlock,
 
   if(readNumber < 0)
     readNumber = STANDARD_READ;
+
+  if(skipBUP && dat->isBackup()) {
+    std::cout << "Skipping backup file: " 
+              << dat->fileName() << std::endl;
+    return 0;
+  }
+    
 
   // First, looking for duplicates:
   if(dat->dup) {

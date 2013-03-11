@@ -118,6 +118,11 @@ class DVDCopy {
   /// number triplet. Returns -1 if not found.
   int findFile(int title, dvd_read_domain_t domain, int number);
 
+  /// In principle, backup files are good, but in practice, they seem
+  /// to be used to implement copy-protection schemes, so they should
+  /// be disabled by default. This is the purpose of this flag.
+  bool skipBUP;
+
 public:
 
   DVDCopy();
