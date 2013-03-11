@@ -140,6 +140,8 @@ void DVDFile::walkFile(int start, int blocks, int steps,
   double rate;
   const char * rate_suffix;
 
+  if(steps < 0)
+    steps = 128;                // Decent default ?
   std::unique_ptr<unsigned char> 
     readBuffer(new unsigned char[steps * SECTOR_SIZE]); 
 
