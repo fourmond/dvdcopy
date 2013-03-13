@@ -142,7 +142,7 @@ void DVDFile::walkFile(int start, int blocks, int steps,
 
   if(steps < 0)
     steps = 128;                // Decent default ?
-  std::unique_ptr<unsigned char> 
+  std::unique_ptr<unsigned char[]> 
     readBuffer(new unsigned char[steps * SECTOR_SIZE]); 
 
   int overallSize = fileSize();
