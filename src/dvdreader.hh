@@ -36,8 +36,6 @@ public:
   /// The file this one is a duplicate of.
   DVDFileData * dup;
 
-  DVDFileData(int t, dvd_read_domain_t d, 
-              int n) : title(t), domain(d), number(n), dup(NULL) {;};
 
   /// This number identifies the file (either start sector if using
   /// an image of inode number if using a directory)
@@ -45,6 +43,17 @@ public:
 
   /// The size of the file
   uint32_t size;
+
+  /// If not 0, the number of bytes that actually contain something,
+  /// at the beginning of the file.
+  ///
+  /// @warning Not used for now.
+  uint32_t relevantSize;
+
+
+  DVDFileData(int t, dvd_read_domain_t d, 
+              int n) : title(t), domain(d), number(n), 
+                       dup(NULL), relevantSize(0) {;};
 
   std::string fileName(bool stripInitialSlash = false, 
                        int blocks = -1) const;
@@ -55,6 +64,9 @@ public:
 
   /// Whether the file is a backup file
   bool isBackup() const;
+
+  /// Whether the file is an information file or not (ie BUP or IFO)
+  bool isIFO() const;
     
 };
 

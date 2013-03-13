@@ -32,6 +32,12 @@ bool DVDFileData::isBackup() const
   return domain == DVD_READ_INFO_BACKUP_FILE;
 }
 
+bool DVDFileData::isIFO() const
+{
+  return (domain == DVD_READ_INFO_BACKUP_FILE) ||
+    (domain == DVD_READ_INFO_FILE);
+}
+
 
 std::string DVDFileData::fileName(int title, dvd_read_domain_t domain,
                                   int number = -1)

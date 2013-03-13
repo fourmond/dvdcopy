@@ -66,7 +66,7 @@ bool BadSectors::tryMerge(const BadSectors & follower)
 //////////////////////////////////////////////////////////////////////
 
 
-DVDCopy::DVDCopy() : badSectors(NULL), sectorsRead(-1), skipBUP(true)
+DVDCopy::DVDCopy() : badSectors(NULL), sectorsRead(-1), skipBUP(false)
 {
   reader = NULL;
 }
@@ -85,7 +85,7 @@ int DVDCopy::copyFile(const DVDFileData * dat, int firstBlock,
     readNumber = STANDARD_READ;
 
   if(skipBUP && dat->isBackup()) {
-    std::cout << "Skipping backup file: " 
+    std::cout << std::flush << "\nSkipping backup file: " 
               << dat->fileName() << std::endl;
     return 0;
   }
@@ -132,6 +132,10 @@ int DVDCopy::copyFile(const DVDFileData * dat, int firstBlock,
   if(dat->number > 1)
     return 0;
 
+  int ifoSectors = -1;
+  if(dat->isIFO())
+    extractIFOSizes(dat, &ifoSectors);
+  
 
   std::unique_ptr<DVDFile> file(DVDFile::openFile(reader, dat));
   if(! file) {
@@ -140,7 +144,6 @@ int DVDCopy::copyFile(const DVDFileData * dat, int firstBlock,
     return 0;
   }
   DVDOutFile outfile(targetDirectory.c_str(), dat->title, dat->domain);
-
 
   int skipped = 0;
   auto success = [&outfile](int offset, int nb, 
@@ -157,6 +160,13 @@ int DVDCopy::copyFile(const DVDFileData * dat, int firstBlock,
   };
 
   int size = file->fileSize();
+  /// @todo make that configurable
+  if(ifoSectors > 0 && size > ifoSectors) {
+    std::string fileName = dat->fileName(true);
+    printf("\nIFO headers say read only %d sectors instead of %d for file %s\n",
+           ifoSectors, size, fileName.c_str());
+    size = ifoSectors;
+  }
   int current_size = outfile.fileSize();
   if(firstBlock > 0)
     current_size = firstBlock; 
@@ -453,6 +463,9 @@ void DVDCopy::extractIFOSizes(const DVDFileData * dat,
 
   // Read the first sector
   file->readBlocks(0, 1, buffer);
+
+  // Information coming from:
+  // http://dvd.sourceforge.net/dvdinfo/ifo.html
 
   unsigned last_sec = ((unsigned)buffer[0x0C] << 24 |
                        (unsigned)buffer[0x0D] << 16 | 
