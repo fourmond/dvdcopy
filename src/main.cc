@@ -40,6 +40,7 @@ void printHelp(const char * progname)
             << " -s, --second-pass: run a second pass reading only bad sectors\n"
             << " -b, --bad-sectors: specify an alternate bad sectors file\n" 
             << " -S, --scan: scan directory for bad sectors\n" 
+            << " -I, --ifo-scan: scan ifo files for info\n" 
             << " -e, --eject: attempts to eject the source after copying\n";
     
 }
@@ -52,6 +53,7 @@ static struct option long_options[] = {
   { "second-pass", 0, NULL, 's' },
   { "bad-sectors", 1, NULL, 'b' },
   { "scan", 0, NULL, 'S' },
+  { "ifo-scan", 0, NULL, 'I' },
   { NULL, 0, NULL, 0}
 };
 
@@ -62,10 +64,11 @@ int main(int argc, char ** argv)
   int option;
   int secondPass = 0;
   int scan = 0;
+  int ifoScan = 0;
   int eject = 0;
 
   do {
-    option = getopt_long(argc, argv, "b:hel:sSn:",
+    option = getopt_long(argc, argv, "b:heIl:sSn:",
                          long_options, NULL);
     
     switch(option) {
@@ -85,6 +88,9 @@ int main(int argc, char ** argv)
         dvd.sectorsRead = nb;
     }
       break;
+    case 'I':
+      ifoScan = 1;
+      break;
     case 'l': 
       {
         DVDReader dvd(optarg);
@@ -99,7 +105,7 @@ int main(int argc, char ** argv)
       break;
     }
   } while(option != -1);
-  if(argc != optind + 2) {
+  if(argc != optind + (ifoScan ? 1 : 2)) {
     printHelp(argv[0]);
     return 1;
   }
@@ -108,6 +114,8 @@ int main(int argc, char ** argv)
     dvd.secondPass(argv[optind], argv[optind+1]);
   else if(scan)
     dvd.scanForBadSectors(argv[optind], argv[optind+1]);
+  else if(ifoScan)
+    dvd.scanIFOs(argv[optind]);
   else
     dvd.copy(argv[optind], argv[optind+1]);
 

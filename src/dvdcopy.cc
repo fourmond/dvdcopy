@@ -443,3 +443,56 @@ void DVDCopy::ejectDrive()
   if(! sourceDevice.empty())
     DVDDrive::eject(sourceDevice.c_str());
 }
+
+void DVDCopy::extractIFOSizes(const DVDFileData * dat, 
+                              int * ifoSectors,
+                              int * titleSectors)
+{
+  unsigned char buffer[2048];
+  std::unique_ptr<DVDFile> file(DVDFile::openFile(reader, dat));
+
+  // Read the first sector
+  file->readBlocks(0, 1, buffer);
+
+  unsigned last_sec = ((unsigned)buffer[0x0C] << 24 |
+                       (unsigned)buffer[0x0D] << 16 | 
+                       (unsigned)buffer[0x0E] << 8 |
+                       (unsigned)buffer[0x0F]);
+  if(titleSectors)
+    *titleSectors = last_sec + 1;
+      
+  unsigned last_ifo_sec = ((unsigned)buffer[0x1C] << 24 |
+                           (unsigned)buffer[0x1D] << 16 | 
+                           (unsigned)buffer[0x1E] << 8 |
+                           (unsigned)buffer[0x1F]);
+
+  if(ifoSectors)
+    *ifoSectors = last_ifo_sec + 1;
+
+}
+
+
+void DVDCopy::scanIFOs(const char * device)
+{
+  setup(device, NULL);
+
+  for(std::vector<DVDFileData *>::iterator i = files.begin(); 
+      i != files.end(); i++) {
+    DVDFileData * dat = *i;
+    if(dat->domain == DVD_READ_INFO_FILE ||
+       dat->domain == DVD_READ_INFO_BACKUP_FILE) {
+      // That's what we want !
+
+      int titleSize = 0;
+      int ifoSize = 0;
+      extractIFOSizes(dat, &ifoSize, &titleSize);
+      
+
+
+      std::cout << "Looking at file " << dat->fileName(true) 
+                << " of size " << dat->size/2048 << " sectors\n"
+                << "IFO size " << ifoSize << "\n"
+                << "Title size " << titleSize << std::endl;
+    }
+  }  
+}

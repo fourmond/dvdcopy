@@ -123,6 +123,15 @@ class DVDCopy {
   /// be disabled by default. This is the purpose of this flag.
   bool skipBUP;
 
+  /// Analyse a given IFO file to extract the relevant sector
+  /// informations. It returns the number of sectors in the IFO file
+  /// and in the "title".
+  ///
+  /// A device must be setup already.
+  void extractIFOSizes(const DVDFileData * file, 
+                       int * ifoSectors,
+                       int * titleSectors = NULL);
+
 public:
 
   DVDCopy();
@@ -140,6 +149,10 @@ public:
   /// Scans the source for bad sectors and make a bad sector list
   void scanForBadSectors(const char * source, 
                          const char * badSectorsFileName);
+
+
+  /// Scans the source's IFO files for information.
+  void scanIFOs(const char * source);
 
   /// Attempts to eject the drive.
   void ejectDrive();
