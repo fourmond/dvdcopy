@@ -54,6 +54,8 @@ static struct option long_options[] = {
   { "bad-sectors", 1, NULL, 'b' },
   { "scan", 0, NULL, 'S' },
   { "ifo-scan", 0, NULL, 'I' },
+  { "splice-ifos", 0, NULL, 10 },
+  { "splice-ifos-base", 1, NULL, 11 },
   { NULL, 0, NULL, 0}
 };
 
@@ -66,6 +68,7 @@ int main(int argc, char ** argv)
   int scan = 0;
   int ifoScan = 0;
   int eject = 0;
+  int spliceIFOs = 0;
 
   do {
     option = getopt_long(argc, argv, "b:heIl:sSn:",
@@ -73,6 +76,12 @@ int main(int argc, char ** argv)
     
     switch(option) {
     case -1: break;
+    case 10: 
+      spliceIFOs = 1;
+      break;
+    case 11:
+      spliceIFOs = atoi(optarg);
+      break;
     case 'h': 
       printHelp(argv[0]);
       return 0;
@@ -116,6 +125,8 @@ int main(int argc, char ** argv)
     dvd.scanForBadSectors(argv[optind], argv[optind+1]);
   else if(ifoScan)
     dvd.scanIFOs(argv[optind]);
+  else if(spliceIFOs > 0)
+    dvd.spliceIFO(argv[optind], argv[optind+1], spliceIFOs);
   else
     dvd.copy(argv[optind], argv[optind+1]);
 

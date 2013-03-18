@@ -85,6 +85,7 @@ int DVDCopy::copyFile(const DVDFileData * dat, int firstBlock,
     readNumber = STANDARD_READ;
 
   if(skipBUP && dat->isBackup()) {
+    // But, that may be a bad idea ?
     std::cout << std::flush << "\nSkipping backup file: " 
               << dat->fileName() << std::endl;
     return 0;
@@ -329,6 +330,67 @@ void DVDCopy::scanForBadSectors(const char *device,
     fprintf(bad, "%s\n",
             simplifiedBad[i].toString().c_str());
 }
+
+void DVDCopy::spliceIFO(const char * device, const char * target, int nb)
+{
+  setup(device, target);
+
+
+  DVDFileData * ifoFile = NULL;
+
+  typedef std::vector< std::pair<DVDFileData *, DVDFileData *> > file_pairs;
+  
+  file_pairs ifoFiles;
+
+  for(std::vector<DVDFileData *>::iterator i = files.begin(); 
+      i != files.end(); i++) {
+    DVDFileData * f = *i;
+    if(f->domain == DVD_READ_INFO_FILE)
+      ifoFile = f;
+    if(ifoFile && f->isBackup() && 
+       f->title == ifoFile->title && 
+       f->number == ifoFile->number) {
+      // Found a correct IFO -> BUP correspondance
+      ifoFiles.push_back(std::pair<DVDFileData *, DVDFileData *> (ifoFile, f));
+    }
+  }
+
+  for(file_pairs::iterator i = ifoFiles.begin(); 
+      i != ifoFiles.end(); i++) {
+    DVDFileData * ifo = i->first;
+    DVDFileData * bup = i->second;
+    
+    std::cout << "Splicing in information from " << bup->fileName() 
+              << " to " << ifo->fileName() << std::endl;
+
+    // Now, the game is to copy the sectors whose number is listed in
+    // the IFO file from the BUP file, excepted the first _nb_
+    int ifoSectors = 0;
+    extractIFOSizes(ifo, &ifoSectors);
+    DVDOutFile outfile(targetDirectory.c_str(), 
+                       ifo->title, ifo->domain);
+    std::unique_ptr<DVDFile> file(DVDFile::openFile(reader, bup));
+
+    int skipped = 0;
+    auto success = [&outfile](int offset, int nb, 
+                              unsigned char * buffer,
+                              const DVDFileData * dat) {
+      outfile.writeSectors(reinterpret_cast<char*>(buffer), nb);
+    };
+
+    auto failure = [&outfile, &skipped, this](int blk, int nb, 
+                                              const DVDFileData * dat) {
+      outfile.skipSectors(nb);
+      registerBadSectors(dat, blk, nb);
+      skipped += nb;
+    };
+
+    outfile.seek(nb);
+    file->walkFile(nb, ifoSectors - nb, 128, 
+                   success, failure);
+  }
+}
+
 
 DVDCopy::~DVDCopy()
 {

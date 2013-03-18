@@ -143,6 +143,11 @@ public:
   /// directory should probably not exist.
   void copy(const char * source, const char * dest);
 
+
+  /// Splice IFO files from BUP files, while keeping the _nb_ first
+  /// sectors.
+  void spliceIFO(const char * source, const char * dest, int nb);
+
   /// Does a second pass, reading a bad sector files
   void secondPass(const char * source, const char * dest);
 
