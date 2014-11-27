@@ -22,9 +22,6 @@
 
 /// Handles writing output files.
 class DVDOutFile {
-  /// Output file descriptor
-  int fd;
-  
   /// Output directory
   std::string outputDirectory;
 
@@ -36,6 +33,9 @@ class DVDOutFile {
 
   /// Current sector (one DVD sector is 2048 bytes)
   int sector;
+
+  /// Output file descriptor
+  int fd;
 
   /// Returns the numbered base file
   std::string makeFileName(int number = -1) const;

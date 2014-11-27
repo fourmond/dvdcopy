@@ -66,7 +66,7 @@ bool BadSectors::tryMerge(const BadSectors & follower)
 //////////////////////////////////////////////////////////////////////
 
 
-DVDCopy::DVDCopy() : badSectors(NULL), sectorsRead(-1), skipBUP(false)
+DVDCopy::DVDCopy() : badSectors(NULL), skipBUP(false), sectorsRead(-1)
 {
   reader = NULL;
 }
@@ -245,7 +245,7 @@ void DVDCopy::secondPass(const char *device, const char * target)
   std::vector<BadSectors> oldBadSectors;
   std::swap(oldBadSectors, badSectorsList);
 
-  for(int i = 0; i < oldBadSectors.size(); i++) {
+  for(int i = 0; i < int(oldBadSectors.size()); i++) {
     BadSectors & bs = oldBadSectors[i];
     printf("Trying to read %d bad sectors from file %s at %d:\n",
            bs.number,
@@ -264,9 +264,9 @@ void DVDCopy::secondPass(const char *device, const char * target)
     printf("Updating the bad sectors file '%s'\n",
            badSectorsFileName.c_str());
     openBadSectorsFile("w");
-    for(int j = 0; j < badSectorsList.size(); j++)
+    for(int j = 0; j < int(badSectorsList.size()); j++)
       fprintf(badSectors, "%s\n", badSectorsList[j].toString().c_str());
-    for(int j = i+1; j < oldBadSectors.size(); j++)
+    for(int j = i+1; j < int(oldBadSectors.size()); j++)
       fprintf(badSectors, "%s\n", oldBadSectors[j].toString().c_str());
     closeBadSectorsFile();
   }
@@ -315,7 +315,7 @@ void DVDCopy::scanForBadSectors(const char *device,
 
   // OK, now, we have a list of bad sectors. We simplify it
   std::vector<BadSectors> simplifiedBad;
-  for(int i = 0; i < badSectorsList.size(); i++) {
+  for(int i = 0; i < int(badSectorsList.size()); i++) {
     const BadSectors & bs = badSectorsList[i];
     if(!i)
       simplifiedBad.push_back(bs);
@@ -326,7 +326,7 @@ void DVDCopy::scanForBadSectors(const char *device,
   }
 
   FILE * bad = fopen(badSectorsFile, "w");
-  for(int i = 0; i < simplifiedBad.size(); i++)
+  for(int i = 0; i < int(simplifiedBad.size()); i++)
     fprintf(bad, "%s\n",
             simplifiedBad[i].toString().c_str());
 }
@@ -440,7 +440,7 @@ void DVDCopy::setBadSectorsFileName(const char * file)
 
 int DVDCopy::findFile(int title, dvd_read_domain_t domain, int number)
 {
-  for(int i = 0; i < files.size(); i++) {
+  for(int i = 0; i < int(files.size()); i++) {
     const DVDFileData * dat = files[i];
     if( 
        (dat->title == title) && 
@@ -484,7 +484,7 @@ void DVDCopy::readBadSectors()
     }
     else {
       // Make all substrings NULL-terminated:
-      for(int i = 1; i < sizeof(matches)/sizeof(regmatch_t); i++) {
+      for(int i = 1; i < int(sizeof(matches)/sizeof(regmatch_t)); i++) {
         if(matches[i].rm_so >= 0)
           buffer[matches[i].rm_eo] = 0;
       }
