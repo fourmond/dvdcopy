@@ -1,6 +1,6 @@
 dnl Template file for configure.
 AC_INIT([dvdcopy], [0.1])
-AM_INIT_AUTOMAKE([foreign])
+AM_INIT_AUTOMAKE([foreign subdir-objects])
 
 # AC_CONFIG_MACRO_DIRS([/usr/share/aclocal])
 
