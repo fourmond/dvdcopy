@@ -13,6 +13,8 @@ AC_CHECK_HEADER(getopt.h)
 
 AC_CHECK_HEADERS(linux/cdrom.h)
 
+AC_CHECK_PROG([PANDOC], [pandoc], [$(which pandoc)])
+
 AC_PROG_CXX
 AC_LANG([C++])
 
