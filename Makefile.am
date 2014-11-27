@@ -9,3 +9,4 @@ dvdcopy_SOURCES = src/main.cc src/headers.hh \
 
 secdump_SOURCES = src/secdump.cc
 
+man1_MANS = man/dvdcopy.1
