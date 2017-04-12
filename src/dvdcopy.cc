@@ -71,15 +71,22 @@ void Progress::setupForCopying(const std::vector<DVDFileData * > & files)
   totalSkipped = 0;
   sectorsDone = 0;
   for(auto it = files.begin(); it != files.end(); it++) {
-    const DVDFileData * file = *it;
+    DVDFileData * file = *it;
     FileProgress pg;
     pg.totalSectors = (file->dup ? 0 : file->size/2048);
     totalSectors += pg.totalSectors;
     pg.sectorsDone = 0;
     pg.skippedSectors = 0;
     progresses.insert(std::pair<const DVDFileData *, FileProgress>(file, pg));
+    DVDFileData * base = DVDFileData::findBase(files, file);
+    if(base) {
+      auto it2 = progresses.find(base);
+      if(it2 == progresses.end())
+        throw std::runtime_error("Processing number 2 after number 1");
+      it2->second.totalSectors += pg.totalSectors;
+      pg.totalSectors = 0;
+    }
   }
-
   /// @todo Use std::chrono
   gettimeofday(&startTime, NULL);
 }
@@ -151,10 +158,10 @@ void Progress::writeCurrentProgress(const DVDFileData * file) const
   }
   else 
     rate_suffix = "B/s";
-  printf(" %d skipped, total: %7d/%d blocks, %d skipped "
+  printf(" %d skipped, total: %1.3g/%1.3g GB, %d skipped "
          "(%02d:%02d out of %02d:%02d, %5.1f%s)",
          progress.skippedSectors,
-         sectorsDone, totalSectors, totalSkipped,
+         sectorsDone*(1.0/(512*1024)), totalSectors*(1.0/(512*1024)), totalSkipped,
          ((int) elapsed_seconds) / 60, ((int) elapsed_seconds) % 60, 
          ((int) estimated_seconds) / 60, ((int) estimated_seconds) % 60,
          rate, rate_suffix);

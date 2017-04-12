@@ -85,6 +85,22 @@ std::string DVDFileData::fileName(bool stripInitialSlash,
   return s + DVDFileData::fileName(title, domain, nb);
 }
 
+
+DVDFileData * DVDFileData::findBase(const std::vector<DVDFileData *> & files,
+                                    const DVDFileData * file)
+{
+  if(file->number <= 1)
+    return NULL;
+  for(auto it = files.begin(); it != files.end(); ++it) {
+    DVDFileData * fl = *it;
+    if((fl->title == file->title) &&
+       (fl->domain == file->domain) && (fl->number == 1))
+      return fl;
+  }
+  return NULL;
+}
+
+
 //////////////////////////////////////////////////////////////////////
 
 DVDReader::DVDReader(const char * device) : source(device), isDir(false)

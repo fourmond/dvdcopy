@@ -62,6 +62,10 @@ public:
   static std::string fileName(int title, dvd_read_domain_t domain,
                               int number);
 
+  /// If this is a multi-part file, find the base file, or return NULL
+  static DVDFileData * findBase(const std::vector<DVDFileData *> & files,
+                                const DVDFileData * file);
+
   /// Whether the file is a backup file
   bool isBackup() const;
 
