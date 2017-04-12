@@ -65,6 +65,106 @@ bool BadSectors::tryMerge(const BadSectors & follower)
 
 //////////////////////////////////////////////////////////////////////
 
+void Progress::setupForCopying(const std::vector<DVDFileData * > & files)
+{
+  totalSectors = 0;
+  totalSkipped = 0;
+  sectorsDone = 0;
+  for(auto it = files.begin(); it != files.end(); it++) {
+    const DVDFileData * file = *it;
+    FileProgress pg;
+    pg.totalSectors = (file->dup ? 0 : file->size/2048);
+    totalSectors += pg.totalSectors;
+    pg.sectorsDone = 0;
+    pg.skippedSectors = 0;
+    progresses.insert(std::pair<const DVDFileData *, FileProgress>(file, pg));
+  }
+
+  /// @todo Use std::chrono
+  gettimeofday(&startTime, NULL);
+}
+
+void Progress::successfulRead(const DVDFileData * file, int nb)
+{
+  auto it = progresses.find(file);
+  if(it == progresses.end())
+    throw std::runtime_error("Could not find the file for the progress");
+  FileProgress & progress = it->second;
+  progress.sectorsDone += nb;
+  sectorsDone += nb;
+}
+
+void Progress::finishedFile(const DVDFileData * file)
+{
+  auto it = progresses.find(file);
+  if(it == progresses.end())
+    throw std::runtime_error("Could not find the file for the progress");
+  FileProgress & progress = it->second;
+  sectorsDone += progress.totalSectors - progress.sectorsDone;
+  progress.sectorsDone = progress.totalSectors;
+}
+
+void Progress::failedRead(const DVDFileData * file, int nb)
+{
+  auto it = progresses.find(file);
+  if(it == progresses.end())
+    throw std::runtime_error("Could not find the file for the progress");
+  FileProgress & progress = it->second;
+  progress.sectorsDone += nb;
+  progress.skippedSectors += nb;
+  sectorsDone += nb;
+  totalSkipped += nb;
+}
+
+
+void Progress::writeCurrentProgress(const DVDFileData * file) const
+{
+  struct timeval current;
+
+  double elapsed_seconds;
+  double estimated_seconds;
+  double rate;
+  const char * rate_suffix;
+
+  auto it = progresses.find(file);
+  if(it == progresses.end())
+    throw std::runtime_error("Could not find the file for the progress");
+  const FileProgress & progress = it->second;
+
+  // Progress report
+  gettimeofday(&current, NULL);
+
+  int remaining = totalSectors - sectorsDone;
+
+  elapsed_seconds = (current.tv_sec - startTime.tv_sec)*1.0 + 
+    1e-6 * (current.tv_usec - startTime.tv_usec);
+  estimated_seconds = (elapsed_seconds * (totalSectors))/
+    sectorsDone;
+  rate = ((sectorsDone) * 2048.)/(elapsed_seconds);
+  if(rate >= 1e6) {
+    rate_suffix = "MB/s";
+    rate /= 1e6;
+  }
+  else if(rate >= 1e3) {
+    rate_suffix = "kB/s";
+    rate /= 1e3;
+  }
+  else 
+    rate_suffix = "B/s";
+  printf(" %d skipped, total: %7d/%d blocks, %d skipped "
+         "(%02d:%02d out of %02d:%02d, %5.1f%s)",
+         progress.skippedSectors,
+         sectorsDone, totalSectors, totalSkipped,
+         ((int) elapsed_seconds) / 60, ((int) elapsed_seconds) % 60, 
+         ((int) estimated_seconds) / 60, ((int) estimated_seconds) % 60,
+         rate, rate_suffix);
+  fflush(stdout);
+}
+
+
+
+//////////////////////////////////////////////////////////////////////
+
 
 DVDCopy::DVDCopy() : badSectors(NULL), sectorsRead(-1), skipBUP(false)
 {
@@ -147,17 +247,20 @@ int DVDCopy::copyFile(const DVDFileData * dat, int firstBlock,
   DVDOutFile outfile(targetDirectory.c_str(), dat->title, dat->domain);
 
   int skipped = 0;
-  auto success = [&outfile](int offset, int nb, 
+  auto success = [&outfile, this](int offset, int nb, 
                             unsigned char * buffer,
                             const DVDFileData * dat) {
     outfile.writeSectors(reinterpret_cast<char*>(buffer), nb);
+    overallProgress.successfulRead(dat, nb);
+    overallProgress.writeCurrentProgress(dat);
   };
 
   auto failure = [&outfile, &skipped, this](int blk, int nb, 
                                             const DVDFileData * dat) {
     outfile.skipSectors(nb);
     registerBadSectors(dat, blk, nb);
-    skipped += nb;
+    overallProgress.failedRead(dat, nb);
+    overallProgress.writeCurrentProgress(dat);
   };
 
   int size = file->fileSize();
@@ -174,6 +277,7 @@ int DVDCopy::copyFile(const DVDFileData * dat, int firstBlock,
 
   if(current_size == size) {
     printf("File already fully read: not reading again\n");
+    overallProgress.finishedFile(dat);
     return 0;
   }
   if(blockNumber < 0)
@@ -189,6 +293,8 @@ int DVDCopy::copyFile(const DVDFileData * dat, int firstBlock,
     printf("\nThere were %d sectors skipped in this title set\n",
            skipped);
   }
+  
+  overallProgress.finishedFile(dat);
   return skipped;
 }
 
@@ -227,6 +333,7 @@ void DVDCopy::setup(const char *device, const char * target)
 void DVDCopy::copy(const char *device, const char * target)
 {
   setup(device, target);
+  overallProgress.setupForCopying(files);
 
   /// Methodically copies all listed files
   for(std::vector<DVDFileData *>::iterator i = files.begin(); 

@@ -20,7 +20,7 @@
 #ifndef __DVDREADER_H
 #define __DVDREADER_H
 
-/// A storage space for data about files
+/// This class represents a file within the DVD structure.
 class DVDFileData {
 public:
 

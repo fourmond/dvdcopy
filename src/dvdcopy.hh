@@ -49,6 +49,56 @@ public:
 };
 
 
+/// This class represents the total progress for a copy (or re-read)
+/// operation
+class Progress {
+protected:
+
+  /// This class represents the current progress for a given DVDFileData
+  class FileProgress {
+  public:
+    /// The total number of sectors to read in this file
+    int totalSectors;
+    
+    /// The number of sectors already read in this file
+    int sectorsDone;
+    
+    /// The number of skipped sectors in this file
+    int skippedSectors;
+
+  };
+
+  std::map<const DVDFileData *, FileProgress> progresses;
+
+  int totalSectors;
+  int sectorsDone;
+  int totalSkipped;
+
+  /// Time at which the reading process started.
+  struct timeval startTime;
+
+
+public:
+
+  /// Sets up a progress report for a copy operation
+  void setupForCopying(const std::vector<DVDFileData * > & files);
+
+  void finishedFile(const DVDFileData * file);
+
+  /// Advance the given file by that many sectors
+  void successfulRead(const DVDFileData * file, int nb);
+
+  /// Advance the given file by that many skipped sectors
+  void failedRead(const DVDFileData * file, int nb);
+
+  /// Writes the current progress (for the given file, and for all)
+  void writeCurrentProgress(const DVDFileData * file) const;
+};
+
+
+
+
+
 /// Handles the actual copying job, from a source to a target.
 class DVDCopy {
   /// Copies one file.
@@ -131,6 +181,8 @@ class DVDCopy {
   void extractIFOSizes(const DVDFileData * file, 
                        int * ifoSectors,
                        int * titleSectors = NULL);
+
+  Progress overallProgress;
 
 public:
 

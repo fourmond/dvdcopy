@@ -131,15 +131,6 @@ void DVDFile::walkFile(int start, int blocks, int steps,
                                                  const DVDFileData * dat)> & 
                          failedRead)
 {
-  /* Data structures necessary for progress report */
-  struct timeval init;
-  struct timeval current;
-
-  double elapsed_seconds;
-  double estimated_seconds;
-  double rate;
-  const char * rate_suffix;
-
   if(steps < 0)
     steps = 128;                // Decent default ?
   std::unique_ptr<unsigned char[]> 
@@ -153,8 +144,6 @@ void DVDFile::walkFile(int start, int blocks, int steps,
   if(blocks < remaining)
     remaining = blocks;
 
-  /// @todo Correct error handling
-  gettimeofday(&init, NULL);
   printf("\nReading %d sectors at a time\n", steps); 
   while(remaining > 0) {
     /* First, we determine the number of blocks to be read */
@@ -168,6 +157,8 @@ void DVDFile::walkFile(int start, int blocks, int steps,
            blk, overallSize, fileName.c_str());
     read = readBlocks(blk, nb, (unsigned char*) readBuffer.get());
 
+    /// @todo In fact, this should be whenever the read is smaller
+    /// than what was asked.
     if(read < 0) {
       /* There was an error reading the file. */
       printf("\nError while reading block %d of file %s, skipping\n",
@@ -181,28 +172,5 @@ void DVDFile::walkFile(int start, int blocks, int steps,
     remaining -= read;
     blk += read;
 
-    // Progress report
-    gettimeofday(&current, NULL);
-
-    elapsed_seconds = (current.tv_sec - init.tv_sec)*1.0 + 
-      1e-6 * (current.tv_usec - init.tv_usec);
-    estimated_seconds = (elapsed_seconds * (remaining + blk - start))/
-      (blk - start);
-    rate = ((blk - start) * 2048.)/(elapsed_seconds);
-    if(rate >= 1e6) {
-      rate_suffix = "MB/s";
-      rate /= 1e6;
-    }
-    else if(rate >= 1e3) {
-      rate_suffix = "kB/s";
-      rate /= 1e3;
-    }
-    else 
-      rate_suffix = "B/s";
-    printf(" (%02d:%02d out of %02d:%02d, %5.1f%s)", 
-           ((int) elapsed_seconds) / 60, ((int) elapsed_seconds) % 60, 
-           ((int) estimated_seconds) / 60, ((int) estimated_seconds) % 60,
-           rate, rate_suffix);
-    fflush(stdout);
   }
 }
