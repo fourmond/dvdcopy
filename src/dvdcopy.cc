@@ -93,6 +93,27 @@ void Progress::setupForCopying(const std::vector<DVDFileData * > & files)
   gettimeofday(&startTime, NULL);
 }
 
+void Progress::setupForSecondPass(const std::vector<DVDFileData * > & files,
+                                  BadSectorsFile * badSectors)
+{
+  totalSectors = 0;
+  totalSkipped = 0;
+  sectorsDone = 0;
+  for(auto it = files.begin(); it != files.end(); it++) {
+    DVDFileData * file = *it;
+    FileProgress pg;
+    int nb = badSectors->badSectorsForFile(file).size();
+
+    pg.totalSectors = nb;
+    totalSectors += pg.totalSectors;
+    pg.sectorsDone = 0;
+    pg.skippedSectors = 0;
+    progresses.insert(std::pair<const DVDFileData *, FileProgress>(file, pg));
+  }
+  /// @todo Use std::chrono
+  gettimeofday(&startTime, NULL);
+}
+
 void Progress::successfulRead(const DVDFileData * file, int nb)
 {
   auto it = progresses.find(file);
@@ -354,35 +375,14 @@ void DVDCopy::secondPass(const char *device, const char * target)
 {
   setup(device, target);
   readBadSectors();
+  overallProgress.setupForSecondPass(files, badSectors);
 
-  // for(int i = 0; i < oldBadSectors.size(); i++) {
-  //   BadSectors & bs = oldBadSectors[i];
-  //   printf("Trying to read %d bad sectors from file %s at %d:\n",
-  //          bs.number,
-  //          bs.file->fileName().c_str(),
-  //          bs.start);
-  //   int nb = copyFile(bs.file, bs.start, bs.number, 
-  //                     (sectorsRead > 0 ? sectorsRead : 1));
-  //   if(nb > 0)
-  //     printf("\n -> still got %d bad sectors (out of %d)\n",
-  //            nb, bs.number);
-  //   else
-  //     printf("\n -> apparently successfully read missing sectors\n");
-  //   totalMissing += nb;
-
-  //   // Now, we update the bad sectors list file
-  //   printf("Updating the bad sectors file '%s'\n",
-  //          badSectorsFileName.c_str());
-  //   openBadSectorsFile("w");
-  //   for(int j = 0; j < badSectorsList.size(); j++)
-  //     fprintf(badSectors, "%s\n", badSectorsList[j].toString().c_str());
-  //   for(int j = i+1; j < oldBadSectors.size(); j++)
-  //     fprintf(badSectors, "%s\n", oldBadSectors[j].toString().c_str());
-  //   closeBadSectorsFile();
-  // }
-  // printf("\nAltogether, there are still %d missing sectors\n", 
-  //        totalMissing);
-  
+  for(auto it = files.begin(); it != files.end(); ++it) {
+    const DVDFileData * file = *it;
+    std::set<int> bs = badSectors->badSectorsForFile(file);
+    for(auto it2 = bs.begin(); it2 != bs.end(); ++it2)
+      copyFile(file, *it2, 1, 1);
+  }
 }
 
 void DVDCopy::scanForBadSectors(const char *device, 
@@ -514,6 +514,16 @@ void DVDCopy::registerBadSectors(const DVDFileData * dat,
     badSectors = new BadSectorsFile(bsf);
   }
   badSectors->markBadSectors(dat, beg, size);
+  if(! dontWrite)
+    badSectors->writeOut();
+}
+
+void DVDCopy::clearBadSectors(const DVDFileData * dat, 
+                              int beg, int size, bool dontWrite)
+{
+  if(! badSectors)
+    return;
+  badSectors->clearBadSectors(dat, beg, size);
   if(! dontWrite)
     badSectors->writeOut();
 }

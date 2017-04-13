@@ -22,6 +22,8 @@
 
 #include "dvdreader.hh"
 
+class BadSectorsFile;
+
 /// Class representing a series of consecutive bad sectors.
 ///
 /// @todo Write to- and from- string methods.
@@ -83,6 +85,10 @@ public:
   /// Sets up a progress report for a copy operation
   void setupForCopying(const std::vector<DVDFileData * > & files);
 
+  /// Sets up a progress report for a copy operation
+  void setupForSecondPass(const std::vector<DVDFileData * > & files,
+                          BadSectorsFile * badSectors);
+
   void finishedFile(const DVDFileData * file);
 
   /// Advance the given file by that many sectors
@@ -94,9 +100,6 @@ public:
   /// Writes the current progress (for the given file, and for all)
   void writeCurrentProgress(const DVDFileData * file) const;
 };
-
-class BadSectorsFile;
-
 
 
 
@@ -132,6 +135,11 @@ class DVDCopy {
   void registerBadSectors(const DVDFileData * dat, 
                           int beg, int size, 
                           bool dontWrite = false);
+
+  /// Clears the bad sectors in the bad sectors file
+  void clearBadSectors(const DVDFileData * dat, 
+                       int beg, int size, 
+                       bool dontWrite = false);
 
 
   /// sets up the reader and gets the list of files, and sets up the
