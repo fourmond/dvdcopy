@@ -1,7 +1,7 @@
 /**
     \file headers.hh
     Headers. This file is meant to be use for precompiled headers
-    Copyright 2011 by Vincent Fourmond
+    Copyright 2011, 2017 by Vincent Fourmond
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -30,6 +30,7 @@
 #include <map>
 #include <memory>
 #include <functional>
+#include <set>
 
 // DVDRead
 #include <dvdread/dvd_reader.h>

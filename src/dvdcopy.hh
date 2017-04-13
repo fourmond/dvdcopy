@@ -95,6 +95,7 @@ public:
   void writeCurrentProgress(const DVDFileData * file) const;
 };
 
+class BadSectorsFile;
 
 
 
@@ -123,10 +124,7 @@ class DVDCopy {
   /// The target directory.
   std::string targetDirectory;
 
-  /// A list of bad sectors that were skipped upon reading.
-  /// In the hope to be read again...
-  FILE * badSectors;
-
+  BadSectorsFile * badSectors;
 
   /// Writes a bad sector list to the bad sectors file (unless
   /// dontWrite is true), and add them to the badSectors list (in any
@@ -154,15 +152,6 @@ class DVDCopy {
   /// target if empty.
   std::string badSectorsFileName;
 
-
-  /// Opens the bad sectors file with the given mode, if not open already.
-  ///
-  /// @todo There should be a way to track the mode last used in order
-  /// not to try to read from a descriptor open for writing.
-  void openBadSectorsFile(const char * mode);
-
-  /// Closes the bad sectors file !
-  void closeBadSectorsFile();
 
   /// Finds the index of the file referred to by the title, domain,
   /// number triplet. Returns -1 if not found.

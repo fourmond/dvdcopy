@@ -25,6 +25,8 @@
 
 #include "dvddrive.hh"
 
+#include "badsectors.hh"
+
 #include <stdio.h>
 
 #include <sys/types.h>
@@ -352,40 +354,34 @@ void DVDCopy::secondPass(const char *device, const char * target)
 {
   setup(device, target);
   readBadSectors();
-  closeBadSectorsFile();
-  badSectors = NULL;
-  int totalMissing = 0;
 
-  std::vector<BadSectors> oldBadSectors;
-  std::swap(oldBadSectors, badSectorsList);
+  // for(int i = 0; i < oldBadSectors.size(); i++) {
+  //   BadSectors & bs = oldBadSectors[i];
+  //   printf("Trying to read %d bad sectors from file %s at %d:\n",
+  //          bs.number,
+  //          bs.file->fileName().c_str(),
+  //          bs.start);
+  //   int nb = copyFile(bs.file, bs.start, bs.number, 
+  //                     (sectorsRead > 0 ? sectorsRead : 1));
+  //   if(nb > 0)
+  //     printf("\n -> still got %d bad sectors (out of %d)\n",
+  //            nb, bs.number);
+  //   else
+  //     printf("\n -> apparently successfully read missing sectors\n");
+  //   totalMissing += nb;
 
-  for(int i = 0; i < oldBadSectors.size(); i++) {
-    BadSectors & bs = oldBadSectors[i];
-    printf("Trying to read %d bad sectors from file %s at %d:\n",
-           bs.number,
-           bs.file->fileName().c_str(),
-           bs.start);
-    int nb = copyFile(bs.file, bs.start, bs.number, 
-                      (sectorsRead > 0 ? sectorsRead : 1));
-    if(nb > 0)
-      printf("\n -> still got %d bad sectors (out of %d)\n",
-             nb, bs.number);
-    else
-      printf("\n -> apparently successfully read missing sectors\n");
-    totalMissing += nb;
-
-    // Now, we update the bad sectors list file
-    printf("Updating the bad sectors file '%s'\n",
-           badSectorsFileName.c_str());
-    openBadSectorsFile("w");
-    for(int j = 0; j < badSectorsList.size(); j++)
-      fprintf(badSectors, "%s\n", badSectorsList[j].toString().c_str());
-    for(int j = i+1; j < oldBadSectors.size(); j++)
-      fprintf(badSectors, "%s\n", oldBadSectors[j].toString().c_str());
-    closeBadSectorsFile();
-  }
-  printf("\nAltogether, there are still %d missing sectors\n", 
-         totalMissing);
+  //   // Now, we update the bad sectors list file
+  //   printf("Updating the bad sectors file '%s'\n",
+  //          badSectorsFileName.c_str());
+  //   openBadSectorsFile("w");
+  //   for(int j = 0; j < badSectorsList.size(); j++)
+  //     fprintf(badSectors, "%s\n", badSectorsList[j].toString().c_str());
+  //   for(int j = i+1; j < oldBadSectors.size(); j++)
+  //     fprintf(badSectors, "%s\n", oldBadSectors[j].toString().c_str());
+  //   closeBadSectorsFile();
+  // }
+  // printf("\nAltogether, there are still %d missing sectors\n", 
+  //        totalMissing);
   
 }
 
@@ -393,6 +389,10 @@ void DVDCopy::scanForBadSectors(const char *device,
                                 const char * badSectorsFile)
 {
   setup(device, NULL);
+  setBadSectorsFileName(badSectorsFile);
+  badSectors->clear();
+  overallProgress.setupForCopying(files);
+  
 
   for(std::vector<DVDFileData *>::iterator i = files.begin(); 
       i != files.end(); i++) {
@@ -412,37 +412,27 @@ void DVDCopy::scanForBadSectors(const char *device,
         unsigned char * buffer = buf + i * 2048;
         int first_pes_offset = 13 + (buffer[13] & 0x7);
         if(buffer[2] == 1 && buffer[first_pes_offset + 3] == 1)
-          continue;
-        else
+          overallProgress.successfulRead(dat, 1);
+        else {
+          overallProgress.failedRead(dat, 1);
           registerBadSectors(dat, blk + i, 1, true);
+        }
       }
+      overallProgress.writeCurrentProgress(dat);
     };
 
     auto failure = [this](int blk, int nb, 
                       const DVDFileData * dat) {
       registerBadSectors(dat, blk, nb, true);
+      overallProgress.failedRead(dat, nb);
+      overallProgress.writeCurrentProgress(dat);
     };
 
     file->walkFile(0, sz, (sectorsRead > 0 ? sectorsRead : -1), 
                    success, failure);
   }
-
-  // OK, now, we have a list of bad sectors. We simplify it
-  std::vector<BadSectors> simplifiedBad;
-  for(int i = 0; i < badSectorsList.size(); i++) {
-    const BadSectors & bs = badSectorsList[i];
-    if(!i)
-      simplifiedBad.push_back(bs);
-    else {
-      if(! simplifiedBad.back().tryMerge(bs))
-        simplifiedBad.push_back(bs);
-    }
-  }
-
-  FILE * bad = fopen(badSectorsFile, "w");
-  for(int i = 0; i < simplifiedBad.size(); i++)
-    fprintf(bad, "%s\n",
-            simplifiedBad[i].toString().c_str());
+  
+  badSectors->writeOut();
 }
 
 void DVDCopy::spliceIFO(const char * device, const char * target, int nb)
@@ -510,45 +500,38 @@ DVDCopy::~DVDCopy()
 {
   if(reader)
     DVDClose(reader);
-  closeBadSectorsFile();
+  delete badSectors;
   for(std::vector<DVDFileData *>::iterator i = files.begin(); 
       i != files.end(); i++)
     delete *i;                  // Keep it clean;
 }
 
-void DVDCopy::openBadSectorsFile(const char * mode)
-{
-  if(! badSectors) {
-    if(badSectorsFileName.empty())
-      badSectorsFileName = targetDirectory + ".bad";
-    badSectors = fopen(badSectorsFileName.c_str(), mode);
-  }
-}
-
-void DVDCopy::closeBadSectorsFile()
-{
-  if(badSectors)
-    fclose(badSectors);
-  badSectors = NULL;
-}
-
 void DVDCopy::registerBadSectors(const DVDFileData * dat, 
                                  int beg, int size, bool dontWrite)
 {
-  badSectorsList.push_back(BadSectors(dat, beg, size));
-  if(! dontWrite) {
-    openBadSectorsFile("a");
-    fprintf(badSectors, "%s\n",
-            badSectorsList.back().toString().c_str());
-    fflush(badSectors);
+  if(! badSectors) {
+    std::string bsf = targetDirectory + ".bad";
+    badSectors = new BadSectorsFile(bsf);
+  }
+  badSectors->markBadSectors(dat, beg, size);
+  if(! dontWrite)
+    badSectors->writeOut();
+}
+
+void DVDCopy::readBadSectors()
+{
+  if(! badSectors) {            // just ensure it is loaded correctly
+    std::string bsf = targetDirectory + ".bad";
+    badSectors = new BadSectorsFile(bsf);
   }
 }
 
 void DVDCopy::setBadSectorsFileName(const char * file)
 {
-  badSectorsFileName = file;
+  delete badSectors;
   std::cout << "Using '" << badSectorsFileName << "' for bad sectors " 
             << std::endl;
+  badSectors = new BadSectorsFile(file);
 }
 
 
@@ -564,64 +547,6 @@ int DVDCopy::findFile(int title, dvd_read_domain_t domain, int number)
       return i;
   }
   return -1;
-}
-
-void DVDCopy::readBadSectors()
-{
-  openBadSectorsFile("r");
-  if(! badSectors) {
-    fprintf(stderr, "%s", "No bad sectors file found, "
-            "which is probably good news !\n");
-    return;
-  }
-
-  char buffer[1024];
-  regex_t re;
-  regmatch_t matches[6];
-  { 
-    int er = regcomp(&re, "[^:]+: *([0-9]+),([0-9]+),([0-9]+) *"
-                     "([0-9]+) *\\(([0-9]+)\\)",
-                     REG_EXTENDED);
-    if(er) {
-      regerror(er, &re, buffer, sizeof(buffer));
-      fprintf(stderr, "Error building the line regexp: %s", buffer);
-      return;
-    }
-  }
-    
-  while(! feof(badSectors)) {
-    fgets(buffer, sizeof(buffer), badSectors);
-    int status = regexec(&re, buffer, sizeof(matches)/sizeof(regmatch_t),
-                         matches, 0);
-    if(status) {
-      fprintf(stderr, "error parsing line: %s", buffer);
-    }
-    else {
-      // Make all substrings NULL-terminated:
-      for(int i = 1; i < sizeof(matches)/sizeof(regmatch_t); i++) {
-        if(matches[i].rm_so >= 0)
-          buffer[matches[i].rm_eo] = 0;
-      }
-      
-      // No validation whatsoever, but all groups should be here anyway !
-      int title = atoi(buffer + matches[1].rm_so);
-      dvd_read_domain_t domain = 
-        (dvd_read_domain_t) atoi(buffer + matches[2].rm_so);
-      int number = atoi(buffer + matches[3].rm_so);
-
-      int beg = atoi(buffer + matches[4].rm_so);
-      int size = atoi(buffer + matches[5].rm_so);
-
-      int idx = findFile(title, domain, number);
-      if(idx < 0) {
-        fprintf(stderr, "Found no match for file %d,%d,%d\n",
-                title, domain, number);
-      }
-      else
-        badSectorsList.push_back(BadSectors(files[idx], beg, size));
-    }
-  }
-  
 }
 
 void DVDCopy::ejectDrive()
