@@ -5,7 +5,8 @@ dvdcopy_SOURCES = src/main.cc src/headers.hh \
 	src/dvdoutfile.hh src/dvdoutfile.cc \
 	src/dvdreader.hh src/dvdreader.cc \
 	src/dvdfile.hh src/dvdfile.cc \
-	src/dvddrive.hh src/dvddrive.cc
+	src/dvddrive.hh src/dvddrive.cc \
+	src/badsectors.hh src/badsectors.cc
 
 secdump_SOURCES = src/secdump.cc
 
