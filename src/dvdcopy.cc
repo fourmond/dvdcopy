@@ -40,33 +40,6 @@
 // use of regular expressions !
 #include <regex.h>
 
-
-std::string BadSectors::toString() const
-{
-  char buffer[1024];
-  snprintf(buffer, sizeof(buffer),
-           "%s: %d,%d,%d  %d (%d)",
-           file->fileName().c_str(),
-           file->title,
-           file->domain,
-           file->number,
-           start, number);
-  return std::string(buffer);
-}
-
-bool BadSectors::tryMerge(const BadSectors & follower)
-{
-  if(follower.file != file)
-    return false;
-  if(start + number != follower.start) 
-    return false;
-  number += follower.number;
-  return true;
-}
-
-
-//////////////////////////////////////////////////////////////////////
-
 void Progress::setupForCopying(const std::vector<DVDFileData * > & files)
 {
   totalSectors = 0;

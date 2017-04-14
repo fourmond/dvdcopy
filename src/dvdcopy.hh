@@ -24,32 +24,6 @@
 
 class BadSectorsFile;
 
-/// Class representing a series of consecutive bad sectors.
-///
-/// @todo Write to- and from- string methods.
-class BadSectors {
-public:
-
-  /// The underlying DVD file (ie something in the files list)
-  const DVDFileData * file;
-    
-  /// The starting sector
-  int start;
-
-  /// The number of bad sectors;
-  int number;
-
-  BadSectors(const DVDFileData * f, int s, int n) :
-    file(f), start(s), number(n) {;}
-
-  /// Transform into a string
-  std::string toString() const;
-
-  /// If the given bad sector is next to this one, appends it and
-  /// return true, else return false
-  bool tryMerge(const BadSectors & follower);
-};
-
 
 /// This class represents the total progress for a copy (or re-read)
 /// operation
@@ -148,10 +122,6 @@ class DVDCopy {
 
   /// The underlying files of the source
   std::vector<DVDFileData *> files;
-
-  /// The list of bad sectors, either read from the bad sectors file
-  /// or directly populated registerBadSectors
-  std::vector<BadSectors> badSectorsList;
 
   /// reads the bad sectors from the bad sectors file
   void readBadSectors();
