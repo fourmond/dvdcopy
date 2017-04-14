@@ -157,11 +157,15 @@ void DVDFile::walkFile(int start, int blocks, int steps,
            blk, overallSize, fileName.c_str());
     read = readBlocks(blk, nb, (unsigned char*) readBuffer.get());
 
-    /// @todo In fact, this should be whenever the read is smaller
-    /// than what was asked.
-    if(read < 0) {
+    if(read < nb) {
+      if(read > 0)
+        successfulRead(blk, read, readBuffer.get(), dat);
+      if(read < 0)
+        read = 0;
+      blk += read;
+      nb -= read;
       /* There was an error reading the file. */
-      printf("\nError while reading block %d of file %s, skipping\n",
+      printf("\nError while reading block %d of file %s\n",
              blk, fileName.c_str());
       failedRead(blk, nb, dat);
       read = nb;
