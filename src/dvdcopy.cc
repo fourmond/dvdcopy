@@ -254,6 +254,7 @@ int DVDCopy::copyFile(const DVDFileData * dat, int firstBlock,
                             unsigned char * buffer,
                             const DVDFileData * dat) {
     outfile.writeSectors(reinterpret_cast<char*>(buffer), nb);
+    clearBadSectors(dat, offset, nb);
     overallProgress.successfulRead(dat, nb);
     overallProgress.writeCurrentProgress(dat);
   };
@@ -275,6 +276,7 @@ int DVDCopy::copyFile(const DVDFileData * dat, int firstBlock,
     size = ifoSectors;
   }
   int current_size = outfile.fileSize();
+  printf("Current size of file %d, %d, %d\n", current_size, size, firstBlock);
   if(firstBlock > 0)
     current_size = firstBlock; 
 
@@ -353,8 +355,9 @@ void DVDCopy::secondPass(const char *device, const char * target)
   for(auto it = files.begin(); it != files.end(); ++it) {
     const DVDFileData * file = *it;
     std::set<int> bs = badSectors->badSectorsForFile(file);
-    for(auto it2 = bs.begin(); it2 != bs.end(); ++it2)
+    for(auto it2 = bs.begin(); it2 != bs.end(); ++it2) {
       copyFile(file, *it2, 1, 1);
+    }
   }
 }
 

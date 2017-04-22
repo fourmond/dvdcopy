@@ -44,11 +44,15 @@ BadSectorsFile::BadSectorsFile(const std::string & file) :
 }
 
 /// Write out to the bad sector file
-void BadSectorsFile::writeOut()
+void BadSectorsFile::writeOut(FILE * out)
 {
-  if(fileName.empty())
-    throw std::runtime_error("Can't write unnamed bad sectors file");
-  FILE * out = fopen(fileName.c_str(), "w");
+  bool shouldClose = false;
+  if(! out) {
+    if(fileName.empty())
+      throw std::runtime_error("Can't write unnamed bad sectors file");
+    out = fopen(fileName.c_str(), "w");
+    shouldClose = true;
+  }
   if(! out)
     throw std::runtime_error("Error opening file");
   for(auto it = badSectors.begin(); it != badSectors.end(); ++it) {
@@ -56,6 +60,7 @@ void BadSectorsFile::writeOut()
     const std::set<int> & lst = it->second;
     int first = -1, last = -1;
     auto it2 = lst.begin();
+    // printf("%s: %d\n", file.c_str(), lst.size());
     do {                        // relies on the fact sets are ordered
       bool write = false;
       int cur = *it2;
@@ -69,6 +74,7 @@ void BadSectorsFile::writeOut()
         else
           last = cur;
       }
+      // printf("%s: %d %d %d\n", file.c_str(), cur, first, last);
       ++it2;
       if(write || it2 == lst.end()) {
         fprintf(out, "%s: %d (%d)\n",
@@ -79,7 +85,8 @@ void BadSectorsFile::writeOut()
       }
     } while(it2 != lst.end());
   }
-  fclose(out);
+  if(shouldClose)
+    fclose(out);
 }
 
 void BadSectorsFile::readBadSectors()
@@ -101,13 +108,17 @@ void BadSectorsFile::readBadSectors()
       return;
     }
   }
-    
+
+  int line = 0;
   while(! feof(in)) {
-    fgets(buffer, sizeof(buffer), in);
+    if(! fgets(buffer, sizeof(buffer), in))
+      break;
+    ++line;
+    // fprintf(stderr, "line %d: '%s'", line, buffer);
     int status = regexec(&re, buffer, sizeof(matches)/sizeof(regmatch_t),
                          matches, 0);
     if(status) {
-      fprintf(stderr, "error parsing line: %s", buffer);
+      fprintf(stderr, "error parsing line %d: '%s'", line, buffer);
     }
     else {
       // Make all substrings NULL-terminated:
@@ -158,9 +169,13 @@ void BadSectorsFile::clearBadSectors(const DVDFileData * file,
   clearBadSectors(file->fileName(), pos, nb);
 }
 
-const std::set<int> & BadSectorsFile::badSectorsForFile(const DVDFileData * file)
+std::set<int> BadSectorsFile::badSectorsForFile(const DVDFileData * file)
 {
-  return badSectors[file->fileName()];
+  auto it = badSectors.find(file->fileName());
+  if(it != badSectors.end())
+    return it->second;
+  else
+    return std::set<int>();
 }
 
 void BadSectorsFile::clear()

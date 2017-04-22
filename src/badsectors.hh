@@ -50,7 +50,7 @@ public:
   void readBadSectors();
 
   /// Write out to the bad sector file
-  void writeOut();
+  void writeOut(FILE * out = NULL);
 
   /// Marks the given sectors as bad sectors
   void markBadSectors(const DVDFileData * file, int pos, int nb);
@@ -59,7 +59,7 @@ public:
   void clearBadSectors(const DVDFileData * file, int pos, int nb);
 
   /// Returns the bad sectors for the given file
-  const std::set<int> & badSectorsForFile(const DVDFileData * file);
+  std::set<int> badSectorsForFile(const DVDFileData * file);
 
   /// Clears the bad sectors file
   void clear();

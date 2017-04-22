@@ -153,8 +153,9 @@ void DVDFile::walkFile(int start, int blocks, int steps,
       nb = remaining;
 	  
     std::string fileName = dat->fileName(true, blk);
-    printf("\rReading block %7d/%d (%s)", 
-           blk, overallSize, fileName.c_str());
+    printf("\r%s: %7d/%d",
+           fileName.c_str(),
+           blk, overallSize);
     read = readBlocks(blk, nb, (unsigned char*) readBuffer.get());
 
     if(read < nb) {
@@ -163,11 +164,11 @@ void DVDFile::walkFile(int start, int blocks, int steps,
       if(read < 0)
         read = 0;
       blk += read;
-      nb -= read;
+      int failed = nb - read;
       /* There was an error reading the file. */
       printf("\nError while reading block %d of file %s\n",
              blk, fileName.c_str());
-      failedRead(blk, nb, dat);
+      failedRead(blk, failed, dat);
       read = nb;
     }
     else 
