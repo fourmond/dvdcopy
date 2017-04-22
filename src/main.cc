@@ -127,8 +127,13 @@ int main(int argc, char ** argv)
     dvd.scanIFOs(argv[optind]);
   else if(spliceIFOs > 0)
     dvd.spliceIFO(argv[optind], argv[optind+1], spliceIFOs);
-  else
-    dvd.copy(argv[optind], argv[optind+1]);
+  else {
+    int skipped = dvd.copy(argv[optind], argv[optind+1]);
+    if(skipped > 0) {
+      printf("Found %d skipped sectors, proceeding through a second pass\n");
+      dvd.secondPass(argv[optind], argv[optind+1]);
+    }
+  }
 
   if(eject)
     dvd.ejectDrive();

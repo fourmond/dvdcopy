@@ -155,7 +155,7 @@ void Progress::writeCurrentProgress(const DVDFileData * file) const
   else 
     rate_suffix = "B/s";
   printf(" %d skipped, total: %1.3g/%1.3g GB, %d skipped "
-         "(%02d:%02d out of %02d:%02d, %5.1f%s)",
+         "(%02d:%02d out of %02d:%02d, %1.1f%s)",
          progress.skippedSectors,
          sectorsDone*(1.0/(512*1024)), totalSectors*(1.0/(512*1024)), totalSkipped,
          ((int) elapsed_seconds) / 60, ((int) elapsed_seconds) % 60, 
@@ -335,7 +335,7 @@ void DVDCopy::setup(const char *device, const char * target)
 
 }
 
-void DVDCopy::copy(const char *device, const char * target)
+int DVDCopy::copy(const char *device, const char * target)
 {
   setup(device, target);
   overallProgress.setupForCopying(files);
@@ -344,6 +344,7 @@ void DVDCopy::copy(const char *device, const char * target)
   for(std::vector<DVDFileData *>::iterator i = files.begin(); 
       i != files.end(); i++)
     copyFile(*i);
+  return overallProgress.totalSkipped;
 }
 
 void DVDCopy::secondPass(const char *device, const char * target)

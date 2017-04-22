@@ -46,15 +46,16 @@ protected:
 
   std::map<const DVDFileData *, FileProgress> progresses;
 
-  int totalSectors;
-  int sectorsDone;
-  int totalSkipped;
 
   /// Time at which the reading process started.
   struct timeval startTime;
 
 
 public:
+
+  int totalSectors;
+  int sectorsDone;
+  int totalSkipped;
 
   /// Sets up a progress report for a copy operation
   void setupForCopying(const std::vector<DVDFileData * > & files);
@@ -160,7 +161,9 @@ public:
 
   /// Copies from source device to destination directory. The target
   /// directory should probably not exist.
-  void copy(const char * source, const char * dest);
+  ///
+  /// Returns the total number of bad sectors
+  int copy(const char * source, const char * dest);
 
 
   /// Splice IFO files from BUP files, while keeping the _nb_ first
