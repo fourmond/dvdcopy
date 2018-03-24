@@ -59,31 +59,26 @@ void BadSectorsFile::writeOut(FILE * out)
     const std::string & file = it->first;
     const std::set<int> & lst = it->second;
     int first = -1, last = -1;
-    auto it2 = lst.begin();
-    // printf("%s: %d\n", file.c_str(), lst.size());
-    do {                        // relies on the fact sets are ordered
-      bool write = false;
-      int cur = *it2;
+    for(int cur : lst) {
       if(first < 0) {
         first = cur;
         last = cur;
       }
       else {
-        if(last < cur -1)
-          write = true;
+        if(last < cur -1) {
+          fprintf(out, "%s: %d (%d)\n",
+                  file.c_str(),
+                  first, last-first + 1);
+          first = cur;
+          last = cur;
+        }
         else
           last = cur;
       }
-      // printf("%s: %d %d %d\n", file.c_str(), cur, first, last);
-      ++it2;
-      if(write || it2 == lst.end()) {
-        fprintf(out, "%s: %d (%d)\n",
-           file.c_str(),
-           first, last-first + 1);
-        first = cur;
-        last = cur;
-      }
-    } while(it2 != lst.end());
+    }
+    fprintf(out, "%s: %d (%d)\n",
+            file.c_str(),
+            first, last-first + 1);
   }
   if(shouldClose)
     fclose(out);
