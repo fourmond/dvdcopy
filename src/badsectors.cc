@@ -75,10 +75,12 @@ void BadSectorsFile::writeOut(FILE * out)
         else
           last = cur;
       }
+      fflush(out);
     }
     fprintf(out, "%s: %d (%d)\n",
             file.c_str(),
             first, last-first + 1);
+    fflush(out);
   }
   if(shouldClose)
     fclose(out);
