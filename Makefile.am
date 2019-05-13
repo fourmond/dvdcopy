@@ -1,3 +1,5 @@
+AM_CXXFLAGS = -Wall
+
 # Declaration of the programs:
 bin_PROGRAMS = dvdcopy secdump
 dvdcopy_SOURCES = src/main.cc src/headers.hh \
