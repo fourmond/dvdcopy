@@ -103,8 +103,26 @@ DVDFileData * DVDFileData::findBase(const std::vector<DVDFileData *> & files,
 
 //////////////////////////////////////////////////////////////////////
 
-DVDReader::DVDReader(const char * device) : source(device), isDir(false)
+DVDReader::DVDReader() : reader(NULL), isDir(false)
 {
+}
+
+DVDReader::DVDReader(const char * device)
+{
+  open(device);
+}
+
+dvd_reader_t * DVDReader::handle() const
+{
+  return reader;
+}
+
+void DVDReader::open(const char * device)
+{
+  if(reader)
+    throw std::logic_error("Opening an already opened device");
+  source = device;
+  isDir = false;
   reader = DVDOpen(device);
   if(! reader) {
     std::string err("Error opening device ");
@@ -119,10 +137,13 @@ DVDReader::DVDReader(const char * device) : source(device), isDir(false)
 }
 
 
+
 DVDFileData * DVDReader::getFileInfo(int title, 
                                      dvd_read_domain_t domain, 
                                      int number)
 {
+  if(! reader)
+    throw std::logic_error("Device not opened");
   DVDFileData * data = new DVDFileData(title, domain, number);
   if(isDir) {
     struct stat sb;

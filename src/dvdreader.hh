@@ -96,8 +96,14 @@ class DVDReader {
   /// Returns NULL on absent file.
   DVDFileData * getFileInfo(int title, dvd_read_domain_t domain, int number);
 
-  
+
 public:
+
+  /// Creates an unopened dvd_reader
+  DVDReader();
+
+  /// Opens the given source
+  void open(const char * source);
 
   /// Creates a reader from source
   DVDReader(const char * source);
@@ -107,6 +113,9 @@ public:
 
   /// List all files present on the device
   std::vector<DVDFileData *> listFiles();
+
+  /// Returns the dvd_reader_t handle.
+  dvd_reader_t * handle() const;
 
 
   ~DVDReader();

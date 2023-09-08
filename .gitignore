@@ -10,6 +10,9 @@ autom4te.cache
 .deps
 *.o
 dvdcopy
+secdump
+
+.#*
 
 # Docs
 dox/

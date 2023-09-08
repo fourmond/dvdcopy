@@ -1,5 +1,6 @@
 # Declaration of the programs:
 bin_PROGRAMS = dvdcopy secdump
+# dvddump
 dvdcopy_SOURCES = src/main.cc src/headers.hh \
 	src/dvdcopy.hh src/dvdcopy.cc \
 	src/dvdoutfile.hh src/dvdoutfile.cc \
@@ -10,3 +11,6 @@ dvdcopy_SOURCES = src/main.cc src/headers.hh \
 
 secdump_SOURCES = src/secdump.cc
 
+# dvddump_SOURCES = src/dvddump.cc \
+# 	src/dvdreader.hh src/dvdreader.cc \
+# 	src/headers.hh
