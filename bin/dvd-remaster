@@ -21,16 +21,24 @@
 
 import argparse
 import subprocess
+import sys
 
 parser = argparse.ArgumentParser(description='')
 parser.add_argument('dvd')
 parser.add_argument('--check-order', action='store_true',
                     help="checks the order for all titles")
+parser.add_argument('--dump-title', action='store',
+                    help="dump details about a given title")
+parser.add_argument('--remaster-title', action='store',
+                    help="remasters a given title")
+parser.add_argument('--min-cell-duration', action='store',
+                    help="minimum cell duration")
 
 
 args = parser.parse_args()
 
 lsdvd_str = str(subprocess.check_output(['lsdvd', '-xOy', args.dvd],
+                                        stderr=subprocess.DEVNULL,
                                         universal_newlines=True))
 d = lsdvd_str.find("lsdvd = ")
 if d <= -1:
@@ -43,20 +51,74 @@ lsdvd = eval(lsdvd_str)
 # for t in lsdvd["track"]:
 #     print(t)
 
-def check_title_cell_order(track):
+def check_title_cell_order(track, verbose = False):
     prev = None
+    order = True
     for cell in track["cell"]:
         if prev is not None:
             if prev > cell['first_sector']:
-                print("Cell %d of title %d comes before the previous one: %d vs %d" %
-                      (cell['ix'], track['ix'], prev, cell['first_sector']))
+                order = False
+                if verbose:
+                    print("Cell %d of title %d comes before the previous one: %d vs %d" %
+                          (cell['ix'], track['ix'], prev,
+                           cell['first_sector']))
         prev = cell['last_sector']
+
+    return order
+
+
+def title_string(track):
+    secs = int(track['length'])
+    ss = "#%02d %d:%02d:%02d, %d audio, %d subtitles, %d chapters, %d cells" % (
+        track['ix'], secs/3600, (secs/60) % 60, secs % 60,
+        len(track['audio']), len(track['subp']),
+        len(track['chapter']), len(track['cell']))
+    return ss
 
 if args.check_order:
     for t in lsdvd['track']:
-        check_title_cell_order(t)
+        print(" * %s" % title_string(t))
+        if not check_title_cell_order(t):
+            print("\t -> disordered cells")
+    sys.exit()
+
+if args.dump_title:
+    title = lsdvd['track'][int(args.dump_title)-1]
+    print("Looking at %s" % title_string(title))
+    audio = map(lambda x: x['langcode'], title['audio'])
+    print(" * audio: %s" % ', '.join(audio))
+    spu = map(lambda x: x['langcode'], title['subp'])
+    print(" * subtitles: %s" % ', '.join(spu))
+    for idx in range(0, len(title['chapter'])):
+        c = title['chapter'][idx]
+        if idx >= (len(title['chapter']) - 1):
+            next_cell = len(title['cell'])
+        else:
+            next_cell = title['chapter'][idx+1]['startcell']-1
+        print(" * chap %d start at %d length: %g" %
+              (c['ix'], c['startcell'], c['length']))
+        for ic in range(c['startcell']-1, next_cell):
+            cl = title['cell'][ic]
+            print("\t - cell: %d -- %g -- %d" %
+                  (cl['ix'], cl['length'],
+                   cl['last_sector'] - cl['first_sector']))
+    sys.exit()
+
+if args.remaster_title:
+    title = lsdvd['track'][int(args.remaster_title)-1]
+    # Just naively try all cells and ignores all the ones too small
+    cells = [x for x in title['cell'] if x['length'] > 1]
+    commands = ["play_cell %s %d %d %d |" % (args.dvd, title['vts'],
+                                             title["ix"], x['ix']) for x in cells]
+    
+    print(commands)
+
 
 # What to do:
 # * look at cell sector order for each title
 # * look at VTS occupancy, i.e. parts of the files used twice,
 #   or not used. (compare with dvdcopy bad sectors ?)
+# * analyze the cells based on the bad sectors content ?
+# * drop cells with low
+
+# A program to play a chapter
