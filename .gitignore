@@ -11,8 +11,11 @@ autom4te.cache
 *.o
 dvdcopy
 secdump
+dump_stream
 
 .#*
+
+.dirstamp
 
 # Docs
 dox/
