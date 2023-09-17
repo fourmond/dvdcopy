@@ -22,6 +22,7 @@
 import argparse
 import subprocess
 import sys
+import os
 
 parser = argparse.ArgumentParser(description='')
 parser.add_argument('dvd')
@@ -33,6 +34,12 @@ parser.add_argument('--remaster-title', action='store',
                     help="remasters a given title")
 parser.add_argument('--min-cell-duration', action='store',
                     help="minimum cell duration")
+
+parser.add_argument('--path-to-dump', action='store',
+                    help="gives path to dump_stream")
+
+dump_path = os.path.realpath(__file__ + "/../../dump_stream")
+
 
 
 args = parser.parse_args()
@@ -46,6 +53,8 @@ if d <= -1:
 
 lsdvd_str = lsdvd_str[d + len(("lsdvd = ")):-1]
 lsdvd = eval(lsdvd_str)
+if args.path_to_dump is not None:
+    dump_path = args.path_to_dump
 
 # # 
 # for t in lsdvd["track"]:
@@ -106,13 +115,28 @@ if args.dump_title:
 
 if args.remaster_title:
     title = lsdvd['track'][int(args.remaster_title)-1]
+    min_duration = 1
+    if args.min_cell_duration is not None:
+        min_duration = float(args.min_cell_duration)
     # Just naively try all cells and ignores all the ones too small
-    cells = [x for x in title['cell'] if x['length'] > 1]
-    commands = ["play_cell %s %d %d %d |" % (args.dvd, title['vts'],
-                                             title["ix"], x['ix']) for x in cells]
+    cells = [x for x in title['cell'] if x['length'] > min_duration]
+    cell_cmds = ["%s %s %d %d %d |" % (dump_path,
+                                      args.dvd, title['vts'],
+                                      title["ix"], x['ix']) for x in cells]
+    audio = ",".join(map(lambda x: x['langcode'], title['audio']))
+    subp = ",".join(map(lambda x: x['langcode'], title['subp']))
+
+    with open("palette", 'w') as f:
+        for col in title['palette']:
+            print(col, file = f)
+    commands = ['dvdauthor', '-t', '-o', 'ddd',
+                '-a', audio, "-s", subp, '-p', 'palette']
+    commands += cell_cmds
     
     print(commands)
+    subprocess.run(commands)
 
+# Watch out: put PAL in ~/.config/video_format
 
 # What to do:
 # * look at cell sector order for each title
