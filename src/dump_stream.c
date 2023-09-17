@@ -53,7 +53,7 @@ const char progname [] = "dump_stream";
 
 /* prototypes */
 int  get_int (const char *);
-void play_cells(const char *, int, int, int, int);
+void play_cell(const char *, int, int, int);
 void usage (void);
 void warning (const char *, ...);
 void fatal (const char *, ...);
@@ -474,6 +474,19 @@ read_blocks (dvd_file_t *fh, int sector, int count, uint64_t last_scr)
   return 1;
 }
 
+/* Compares the two sectors by SCR */
+int compare_sectors(void * sec1, void * sec2)
+{
+  uint64_t scr1, scr2;
+  scr1 = extract_scr(sec1+4);
+  scr2 = extract_scr(sec2+4);
+  if(scr1 < scr2)
+    return -1;
+  if(scr1 > scr2)
+    return 1;
+  return 0;
+}
+
 
 static inline void
 insert_private_2_pack (uint64_t scr, int cell_gap)
@@ -612,7 +625,7 @@ void play_cell(const char *dev, int vts_num, int pgc_num,
     }
   if(try_again) {
     unsigned len;
-    int      nsectors, offs;
+    int      nsectors, offs, tmp;
 
     fprintf(stderr, "Not starting with a NAV pack, trying harder\n");
     last_scr = extract_scr(buf + 4);
@@ -629,6 +642,15 @@ void play_cell(const char *dev, int vts_num, int pgc_num,
     for(offs = 1; nsectors; offs += len, nsectors -= len) {
       /* read VOBU sectors */
       len = read_blocks (file_handle, sector + offs, nsectors, last_scr);
+      /* for(tmp = 0; tmp < len; tmp++) { */
+      /*   uint64_t scr = extract_scr(buf + DVD_VIDEO_LB_LEN*tmp + 4); */
+      /*   fprintf(stderr, "SCR: %llu (%d/%d)\n", scr, tmp, len); */
+      /* } */
+        
+
+      /* OK, we sort the sectors, because they are sometimes not sorted */
+      qsort(buf, len, DVD_VIDEO_LB_LEN, compare_sectors);
+      
       if (fwrite (buf, DVD_VIDEO_LB_LEN, len, stdout) != len)
         fatal ("write failed: %s", strerror (errno));
       last_scr = extract_scr (buf + (len - 1) * DVD_VIDEO_LB_LEN + 4);
