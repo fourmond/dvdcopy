@@ -107,7 +107,7 @@ DVDReader::DVDReader() : reader(NULL), isDir(false)
 {
 }
 
-DVDReader::DVDReader(const char * device)
+DVDReader::DVDReader(const char * device) : reader(NULL), isDir(false)
 {
   open(device);
 }
