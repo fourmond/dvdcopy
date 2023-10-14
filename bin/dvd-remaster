@@ -37,6 +37,8 @@ parser.add_argument('--min-cell-duration', action='store',
 
 parser.add_argument('--path-to-dump', action='store',
                     help="gives path to dump_stream")
+parser.add_argument('--output', action='store',
+                    help="output directory")
 
 dump_path = os.path.realpath(__file__ + "/../../dump_stream")
 
@@ -46,7 +48,9 @@ args = parser.parse_args()
 
 lsdvd_str = str(subprocess.check_output(['lsdvd', '-xOy', args.dvd],
                                         stderr=subprocess.DEVNULL,
-                                        universal_newlines=True))
+                                        universal_newlines=True,
+                                        errors="ignore"
+                                        ))
 d = lsdvd_str.find("lsdvd = ")
 if d <= -1:
     raise RuntimeError("Could not parse the output of lsdvd")
@@ -113,6 +117,12 @@ if args.dump_title:
                    cl['last_sector'] - cl['first_sector']))
     sys.exit()
 
+def lang_code(x):
+    lc = x['langcode']
+    if(len(lc) != 2):
+        lc = "ie"               # Unlikely to be misinterpreted
+    return lc
+
 if args.remaster_title:
     title = lsdvd['track'][int(args.remaster_title)-1]
     min_duration = 1
@@ -123,17 +133,22 @@ if args.remaster_title:
     cell_cmds = ["%s %s %d %d %d |" % (dump_path,
                                       args.dvd, title['vts'],
                                       title["ix"], x['ix']) for x in cells]
-    audio = ",".join(map(lambda x: x['langcode'], title['audio']))
-    subp = ",".join(map(lambda x: x['langcode'], title['subp']))
+    audio = ",".join(map(lang_code, title['audio']))
+    subp = ",".join(map(lang_code, title['subp']))
 
     with open("palette", 'w') as f:
         for col in title['palette']:
             print(col, file = f)
-    commands = ['dvdauthor', '-t', '-o', 'ddd',
+    output_dir = args.dvd + ".sntd"
+    if args.output is not None:
+        output_dir = args.output
+    commands = ['dvdauthor', '-t', '-o', output_dir,
                 '-a', audio, "-s", subp, '-p', 'palette']
     commands += cell_cmds
     
     print(commands)
+    subprocess.run(commands)
+    commands = ['dvdauthor', '-T', '-o', output_dir]
     subprocess.run(commands)
 
 # Watch out: put PAL in ~/.config/video_format
