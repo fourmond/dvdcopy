@@ -188,6 +188,10 @@ public:
   int sectorsRead;
 
 
+  /// If this is true, then the second pass is done backwards
+  bool backwards;
+
+
   ~DVDCopy();
 };
 

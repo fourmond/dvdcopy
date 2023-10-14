@@ -39,6 +39,7 @@ void printHelp(const char * progname)
             << " -n, --number NB:  read NB sectors at a time\n"
             << " -s, --second-pass: run a second pass reading only bad sectors\n"
             << " -b, --bad-sectors: specify an alternate bad sectors file\n" 
+            << " -B, --backwards: make the second pass backwards\n" 
             << " -S, --scan: scan directory for bad sectors\n" 
             << " -I, --ifo-scan: scan ifo files for info\n" 
             << " -e, --eject: attempts to eject the source after copying\n";
@@ -52,6 +53,7 @@ static struct option long_options[] = {
   { "number", 1, NULL, 'n' },
   { "second-pass", 0, NULL, 's' },
   { "bad-sectors", 1, NULL, 'b' },
+  { "backwards", 0, NULL, 'B' },
   { "scan", 0, NULL, 'S' },
   { "ifo-scan", 0, NULL, 'I' },
   { "splice-ifos", 0, NULL, 10 },
@@ -71,7 +73,7 @@ int main(int argc, char ** argv)
   int spliceIFOs = 0;
 
   do {
-    option = getopt_long(argc, argv, "b:heIl:sSn:",
+    option = getopt_long(argc, argv, "b:BheIl:sSn:",
                          long_options, NULL);
     
     switch(option) {
@@ -90,6 +92,9 @@ int main(int argc, char ** argv)
       break;
     case 'b': 
       dvd.setBadSectorsFileName(optarg);
+      break;
+    case 'B': 
+      dvd.backwards = true;
       break;
     case 'n':  {
       int nb = atoi(optarg);

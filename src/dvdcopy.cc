@@ -169,9 +169,11 @@ void Progress::writeCurrentProgress(const DVDFileData * file) const
 //////////////////////////////////////////////////////////////////////
 
 
-DVDCopy::DVDCopy() : badSectors(NULL), sectorsRead(-1), skipBUP(false)
+DVDCopy::DVDCopy() : reader(NULL),
+                     badSectors(NULL), skipBUP(false),
+                     sectorsRead(-1),
+                     backwards(false)
 {
-  reader = NULL;
 }
 
 #define STANDARD_READ 128
@@ -356,8 +358,13 @@ void DVDCopy::secondPass(const char *device, const char * target)
   for(auto it = files.begin(); it != files.end(); ++it) {
     const DVDFileData * file = *it;
     std::set<int> bs = badSectors->badSectorsForFile(file);
-    for(auto it2 = bs.begin(); it2 != bs.end(); ++it2) {
-      copyFile(file, *it2, 1, 1);
+    if(backwards) {
+      for(auto it2 = bs.rbegin(); it2 != bs.rend(); ++it2)
+        copyFile(file, *it2, 1, 1);
+    }
+    else {
+      for(auto it2 = bs.begin(); it2 != bs.end(); ++it2)
+        copyFile(file, *it2, 1, 1);
     }
   }
 }
