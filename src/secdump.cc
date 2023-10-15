@@ -68,6 +68,57 @@ int64_t readscr(const unsigned char *buf)
 // http://stnsoft.com/DVD/packhdr.html
 // http://stnsoft.com/DVD/pes-hdr.html
 
+
+/* check if ptr points to nav pack */
+static int is_nav_pack (unsigned char *ptr)
+{
+  uint32_t start_code;
+
+  start_code  = (uint32_t) (ptr [0]) << 24;
+  start_code |= (uint32_t) (ptr [1]) << 16;
+  start_code |= (uint32_t) (ptr [2]) <<  8;
+  start_code |= (uint32_t) (ptr [3]);
+
+  if (start_code != 0x000001ba)
+    return 0;
+
+  if ((ptr [4] & 0xc0) != 0x40)
+    return 0;
+
+  ptr += 14;
+
+  start_code  = (uint32_t) (ptr [0]) << 24;
+  start_code |= (uint32_t) (ptr [1]) << 16;
+  start_code |= (uint32_t) (ptr [2]) <<  8;
+  start_code |= (uint32_t) (ptr [3]);
+
+  if (start_code != 0x000001bb)
+    return 0;
+
+  ptr += 24;
+
+  start_code  = (uint32_t) (ptr [0]) << 24;
+  start_code |= (uint32_t) (ptr [1]) << 16;
+  start_code |= (uint32_t) (ptr [2]) <<  8;
+  start_code |= (uint32_t) (ptr [3]);
+
+  if (start_code != 0x000001bf)
+    return 0;
+
+  ptr += 986;
+
+  start_code  = (uint32_t) (ptr [0]) << 24;
+  start_code |= (uint32_t) (ptr [1]) << 16;
+  start_code |= (uint32_t) (ptr [2]) <<  8;
+  start_code |= (uint32_t) (ptr [3]);
+
+  if (start_code != 0x000001bf)
+    return 0;
+
+  return 1;
+}
+
+
 // Possibly one use of this file would be to re-read a DVD file and
 // find out which sectors were not read properly ? That would be
 // helpful for sure...
@@ -77,14 +128,20 @@ int main(int argc, char ** argv)
   unsigned char buffer[SECTOR_SIZE];
 
   long nb = 0;
+  int64_t last_scr = 0;
   while(! feof(stdin)) {
     fread(buffer, sizeof(buffer), 1, stdin);
-    long int scr = readscr(buffer + 4);
     int first_pes_offset = 13 + (buffer[13] & 0x7);
 
-    if(buffer[2] == 1 && buffer[first_pes_offset + 3] == 1)
-      printf("%7ld: 0x01%hhX, SCR: %9ld -- PES: 0x01%hhX\n",
-             nb, buffer[3], scr, buffer[first_pes_offset + 4]);
+    if(buffer[2] == 1 && buffer[first_pes_offset + 3] == 1) {
+      int64_t scr = readscr(buffer + 4);
+      printf("%7ld: 0x01%hhX, SCR: %9ld -- PES: 0x01%hhX%s%s\n",
+             nb, buffer[3], scr, buffer[first_pes_offset + 4],
+             is_nav_pack(buffer) ? " NAV" : "",
+             scr < last_scr ? " REVERSE" : ""
+             );
+      last_scr = scr;
+    }
     else 
       printf("%7ld: invalid\n", nb);
     nb++;

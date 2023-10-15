@@ -30,7 +30,7 @@
 
 #include <unistd.h>
 
-#define BUF_SECS 512
+#define BUF_SECS 8192
 /*
  * the minimum time for one DVD sector:
  * 2048 byte = 16384 bit @10.08Mbps
@@ -42,8 +42,14 @@
 
 
 /* globals */
-uint8_t    buf [BUF_SECS * DVD_VIDEO_LB_LEN];
-uint8_t    buf2 [BUF_SECS * DVD_VIDEO_LB_LEN];
+/* OK, I know I'm wasting memory, but, well, the time when a full DVD
+   couldn't fit in the RAM is long long gone... */
+uint8_t    buf[BUF_SECS * DVD_VIDEO_LB_LEN];
+uint8_t    buf2[BUF_SECS * DVD_VIDEO_LB_LEN];
+/* buffer for the output */
+uint8_t    out_buf[2 * BUF_SECS * DVD_VIDEO_LB_LEN];
+/*  */
+int        buf_top = 0;
 int        max_read_retries;
 int        read_error_count;
 int        ignore_read_errors;
@@ -58,6 +64,7 @@ void usage (void);
 void warning (const char *, ...);
 void fatal (const char *, ...);
 
+int do_sort = 1;
 
 int
 main (int argc, char *const argv [])
@@ -69,12 +76,16 @@ main (int argc, char *const argv [])
       { "ignore-errors", 0, NULL, 'i' },
       { "max-retries",   1, NULL, 'r' },
       { "report-gaps",   0, NULL, 'g' },
+      { "no-sort",   0, NULL, 'N' },
       { NULL,            0, NULL, 0   }
     };
 
   opterr = 1;
 
-  while ((c = getopt_long_only (argc, argv, "ir:g", long_options, NULL)) >= 0)
+  
+  
+
+  while ((c = getopt_long_only (argc, argv, "ir:gN", long_options, NULL)) >= 0)
     {
       switch (c)
         {
@@ -88,6 +99,9 @@ main (int argc, char *const argv [])
 
         case 'g':
           report_cell_gaps = 1;
+          break;
+        case 'N':
+          do_sort = 0;
           break;
 
         default:
@@ -311,6 +325,9 @@ insert_nav_pack (uint64_t scr, uint8_t *syshdr)
 static uint8_t global_syshdr[18];
 
 
+
+
+
 /*
  * try to read a nav pack at given sector
  * if this fails and we are ignoring read errors, scan for next nav pack
@@ -341,8 +358,8 @@ read_nav_pack (dvd_file_t *fh, dsi_t *dsi,
           navRead_DSI (dsi, buf + DSI_START_BYTE);
 
           /* sanity check */
-          if (sector != dsi -> dsi_gi.nv_pck_lbn)
-            fatal ("bad DSI pack at sector %d", sector);
+          /* if (sector != dsi -> dsi_gi.nv_pck_lbn) */
+          /*   fatal ("bad DSI pack at sector %d", sector); */
 
           /* save contents of system header */
           memcpy (global_syshdr, buf + 20, sizeof (global_syshdr));
@@ -356,7 +373,7 @@ read_nav_pack (dvd_file_t *fh, dsi_t *dsi,
       /* write out an invalid sector to have Vamps fail */
       memset (buf, 0, DVD_VIDEO_LB_LEN);
       fwrite (buf, DVD_VIDEO_LB_LEN, 1, stdout);
-      fatal ("read failed for navigation pack at sector %d", sector);
+ fatal ("read failed for navigation pack at sector %d", sector);
     }
 
   warning ("read failed for navigation pack at sector %d (ignored)", sector);
@@ -408,9 +425,8 @@ read_nav_pack (dvd_file_t *fh, dsi_t *dsi,
 
 
 static inline void
-insert_dummy_pack (uint64_t scr)
+insert_dummy_pack (uint64_t scr, uint8_t * ptr)
 {
-  uint8_t *ptr = buf;
   static uint8_t dummy_pack [] =
     {
       /* pack header: SCR=0, mux rate=10080000bps, stuffing length=0 */
@@ -469,13 +485,13 @@ read_blocks (dvd_file_t *fh, int sector, int count, uint64_t last_scr)
   read_error_count++;
 
   /* insert a dummy video pack instead of bad sector */
-  insert_dummy_pack (add_scr (last_scr, SCR_MIN_FEED));
+  insert_dummy_pack (add_scr (last_scr, SCR_MIN_FEED), buf);
 
   return 1;
 }
 
 /* Compares the two sectors by SCR */
-int compare_sectors(void * sec1, void * sec2)
+int compare_sectors(const void * sec1, const void * sec2)
 {
   uint64_t scr1, scr2;
   scr1 = extract_scr(sec1+4);
@@ -510,6 +526,52 @@ insert_private_2_pack (uint64_t scr, int cell_gap)
   memset (ptr, 0, DVD_VIDEO_LB_LEN - sizeof (private_2_pack));
 }
 
+
+/*
+  Adds the given number of sectors from the source to the output buffer,
+  sort it, and writes the first BUF_SECS sectors to standard output
+*/
+void
+write_packs(uint8_t * source, int nb, uint64_t * last_scr)
+{
+  int read = 0;
+  while(nb > 0 && buf_top < 2 * BUF_SECS) {
+    int first_pes_offset = 13 + (source[13] & 0x7);
+    /* Valid sector, we copy */
+    if(source[2] == 1 && source[first_pes_offset + 3] == 1) {
+      memcpy(out_buf + DVD_VIDEO_LB_LEN * buf_top, source, DVD_VIDEO_LB_LEN);
+      read += 1;
+      buf_top += 1;
+    }
+    source += DVD_VIDEO_LB_LEN;
+    nb -= 1;
+  }
+  if(do_sort)
+    qsort(out_buf, buf_top, DVD_VIDEO_LB_LEN, compare_sectors);
+  if(last_scr)
+    *last_scr = extract_scr(out_buf + (buf_top - 1) * DVD_VIDEO_LB_LEN + 4);
+  if(buf_top == 2 * BUF_SECS) {
+    fwrite(out_buf, DVD_VIDEO_LB_LEN, BUF_SECS, stdout);
+    memmove(out_buf, out_buf + BUF_SECS * DVD_VIDEO_LB_LEN,
+            BUF_SECS * DVD_VIDEO_LB_LEN);
+    buf_top = BUF_SECS;
+    if(nb > 0)
+      write_packs(source, nb, last_scr);
+  }
+}
+
+
+/*
+  Flushes the current buffer to the output
+*/
+void
+flush_packs()
+{
+  if(buf_top > 0) {
+    fwrite(out_buf, DVD_VIDEO_LB_LEN, buf_top, stdout);
+    buf_top = 0;
+  }
+}
 
 void play_cell(const char *dev, int vts_num, int pgc_num,
                 int cell)
@@ -592,10 +654,8 @@ void play_cell(const char *dev, int vts_num, int pgc_num,
         return;
 
       /* generate an MPEG2 program stream (including nav packs) */
-      if (fwrite (buf, DVD_VIDEO_LB_LEN, 1, stdout) != 1)
-        fatal ("write failed: %s", strerror (errno));
+      write_packs(buf, 1, &last_scr);
 
-      last_scr  = extract_scr (buf + 4);
       nsectors  = dsi.dsi_gi.vobu_ea;
       next_vobu = dsi.vobu_sri.next_vobu;
 
@@ -604,23 +664,15 @@ void play_cell(const char *dev, int vts_num, int pgc_num,
         {
           /* read VOBU sectors */
           len = read_blocks (file_handle, sector + offs, nsectors, last_scr);
-
-          /* write VOBU sectors */
-          if (fwrite (buf, DVD_VIDEO_LB_LEN, len, stdout) != len)
-            fatal ("write failed: %s", strerror (errno));
-
-          last_scr = extract_scr (buf + (len - 1) * DVD_VIDEO_LB_LEN + 4);
+          write_packs(buf, len, &last_scr);
         }
-
       cell_gap = (next_vobu == SRI_END_OF_CELL ?
                   (last_sector - sector + 1) : (next_vobu & 0x7fffffff)) - offs;
 
       if (report_cell_gaps && cell_gap)
         {
           insert_private_2_pack (last_scr, cell_gap);
-
-          if (fwrite (buf, DVD_VIDEO_LB_LEN, 1, stdout) != 1)
-            fatal ("write failed: %s", strerror (errno));
+          write_packs(buf, 1, &last_scr);
         }
     }
   if(try_again) {
@@ -633,29 +685,18 @@ void play_cell(const char *dev, int vts_num, int pgc_num,
     memcpy(buf2, buf, DVD_VIDEO_LB_LEN);
     insert_nav_pack(last_scr, global_syshdr);
 
-    if (fwrite (buf, DVD_VIDEO_LB_LEN, 1, stdout) != 1)
-      fatal("write failed: %s", strerror (errno));
-    if (fwrite (buf2, DVD_VIDEO_LB_LEN, 1, stdout) != 1)
-      fatal("write failed: %s", strerror (errno));
+    write_packs(buf, 1, NULL);
+    write_packs(buf2, 1, NULL);
 
     nsectors = last_sector - first_sector - 1;
     for(offs = 1; nsectors; offs += len, nsectors -= len) {
       /* read VOBU sectors */
       len = read_blocks (file_handle, sector + offs, nsectors, last_scr);
-      /* for(tmp = 0; tmp < len; tmp++) { */
-      /*   uint64_t scr = extract_scr(buf + DVD_VIDEO_LB_LEN*tmp + 4); */
-      /*   fprintf(stderr, "SCR: %llu (%d/%d)\n", scr, tmp, len); */
-      /* } */
-        
-
-      /* OK, we sort the sectors, because they are sometimes not sorted */
-      qsort(buf, len, DVD_VIDEO_LB_LEN, compare_sectors);
-      
-      if (fwrite (buf, DVD_VIDEO_LB_LEN, len, stdout) != len)
-        fatal ("write failed: %s", strerror (errno));
-      last_scr = extract_scr (buf + (len - 1) * DVD_VIDEO_LB_LEN + 4);
+      write_packs(buf, len, &last_scr);
     }
   }
+  flush_packs();
+
 }
 
 
